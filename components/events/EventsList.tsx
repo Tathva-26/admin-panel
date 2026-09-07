@@ -16,11 +16,13 @@ const COLUMNS: Column<AdminEvent>[] = [
     key: "id",
     header: "ID",
     className: "numeric w-16 text-zinc-400",
+    hideOnMobile: true,
     cell: (event) => event.id,
   },
   {
     key: "heading",
     header: "Event",
+    primary: true,
     cell: (event) => (
       <div className="min-w-0">
         <p className="truncate font-medium text-zinc-900">{event.heading}</p>
@@ -52,6 +54,7 @@ const COLUMNS: Column<AdminEvent>[] = [
     key: "capacity",
     header: "Capacity",
     className: "numeric w-24 text-right text-zinc-600",
+    hideOnMobile: true,
     cell: (event) => event.capacity ?? "—",
   },
   {
@@ -75,37 +78,40 @@ export default function EventsList() {
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Stacked on a phone, inline once there is room for it. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput
           value={events.filters.search ?? ""}
           onChange={(value) => events.setFilter("search", value)}
           placeholder="Search events…"
         />
 
-        <Select
-          aria-label="Filter by type"
-          className="h-8 w-40"
-          value={events.filters.type ?? ""}
-          onChange={(e) => events.setFilter("type", e.target.value)}
-        >
-          <option value="">All types</option>
-          {EVENT_TYPES.map((type) => (
-            <option key={type} value={type} className="capitalize">
-              {type}
-            </option>
-          ))}
-        </Select>
+        <div className="flex gap-2">
+          <Select
+            aria-label="Filter by type"
+            className="h-9 w-full sm:h-8 sm:w-40"
+            value={events.filters.type ?? ""}
+            onChange={(e) => events.setFilter("type", e.target.value)}
+          >
+            <option value="">All types</option>
+            {EVENT_TYPES.map((type) => (
+              <option key={type} value={type} className="capitalize">
+                {type}
+              </option>
+            ))}
+          </Select>
 
-        <Select
-          aria-label="Filter by state"
-          className="h-8 w-36"
-          value={events.filters.published ?? ""}
-          onChange={(e) => events.setFilter("published", e.target.value)}
-        >
-          <option value="">All states</option>
-          <option value="true">Published</option>
-          <option value="false">Draft</option>
-        </Select>
+          <Select
+            aria-label="Filter by state"
+            className="h-9 w-full sm:h-8 sm:w-36"
+            value={events.filters.published ?? ""}
+            onChange={(e) => events.setFilter("published", e.target.value)}
+          >
+            <option value="">All states</option>
+            <option value="true">Published</option>
+            <option value="false">Draft</option>
+          </Select>
+        </div>
       </div>
 
       <DataTable

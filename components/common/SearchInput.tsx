@@ -47,7 +47,7 @@ export default function SearchInput({
       value={draft}
       placeholder={placeholder}
       onChange={(event) => setDraft(event.target.value)}
-      className="h-8 w-56 text-sm"
+      className="h-9 w-full text-sm sm:h-8 sm:w-56"
     />
   );
 }

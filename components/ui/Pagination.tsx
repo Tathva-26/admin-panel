@@ -23,7 +23,7 @@ export default function Pagination({
   const last = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex items-center justify-between border-t border-zinc-200 px-4 py-2.5">
+    <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-xs text-zinc-500">
         <span className="numeric">
           {first}&ndash;{last}
@@ -31,7 +31,7 @@ export default function Pagination({
         of <span className="numeric">{total}</span>
       </p>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
         <Button
           size="sm"
           disabled={page <= 1}

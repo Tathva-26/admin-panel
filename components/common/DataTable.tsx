@@ -13,6 +13,13 @@ export interface Column<T> {
   cell: (row: T) => ReactNode;
   /** Applied to both the header and every cell — widths, alignment. */
   className?: string;
+  /**
+   * On mobile this column is the card's heading rather than a labelled row.
+   * Mark exactly one column per table.
+   */
+  primary?: boolean;
+  /** Left out of the mobile card, to keep it to what matters on a phone. */
+  hideOnMobile?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -35,8 +42,9 @@ const SKELETON_ROWS = 5;
  * One table for every list screen, so loading, empty and error states are
  * consistent and nobody has to rebuild them per section.
  *
- * Order matters: an error replaces the table entirely, but a reload with rows
- * already on screen keeps them visible rather than flashing back to skeletons.
+ * Below `md` the same columns render as stacked cards. A seven-column table on
+ * a phone is either unreadable or a horizontal scroll nobody discovers, and
+ * label/value pairs stay legible at any width.
  */
 export default function DataTable<T>({
   columns,
@@ -53,6 +61,18 @@ export default function DataTable<T>({
   const showSkeleton = loading && rows.length === 0;
   const showEmpty = !loading && !error && rows.length === 0;
 
+  const primary = columns.find((column) => column.primary) ?? columns[0];
+  const secondary = columns.filter(
+    (column) => column !== primary && !column.hideOnMobile,
+  );
+
+  // A refetch over existing rows dims them instead of removing them, so the
+  // list does not jump while a filter is applied.
+  const dimWhileReloading = cn(
+    "transition-opacity",
+    loading && rows.length > 0 && "opacity-60",
+  );
+
   return (
     <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
       {error ? (
@@ -64,61 +84,90 @@ export default function DataTable<T>({
           action={emptyAction}
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200 bg-zinc-50/80">
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    scope="col"
-                    className={cn(
-                      "px-4 py-2 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase",
-                      column.className,
-                    )}
-                  >
-                    {column.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+        <>
+          {/* Phones and small tablets: one card per row. */}
+          <ul className={cn("divide-y divide-zinc-100 md:hidden", dimWhileReloading)}>
+            {showSkeleton
+              ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
+                  <li key={`skeleton-${index}`} className="space-y-2 px-4 py-3">
+                    <span className="block h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
+                    <span className="block h-3 w-1/3 animate-pulse rounded bg-zinc-100" />
+                  </li>
+                ))
+              : rows.map((row) => (
+                  <li key={rowKey(row)} className="px-4 py-3">
+                    <div className="text-sm font-medium text-zinc-900">
+                      {primary.cell(row)}
+                    </div>
 
-            <tbody
-              // A refetch over existing rows dims them instead of removing them,
-              // so the table does not jump while a filter is applied.
-              className={cn(
-                "divide-y divide-zinc-100 transition-opacity",
-                loading && rows.length > 0 && "opacity-60",
-              )}
-            >
-              {showSkeleton
-                ? Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
-                    <tr key={`skeleton-${rowIndex}`}>
-                      {columns.map((column) => (
-                        <td key={column.key} className="px-4 py-2.5">
-                          <span className="block h-4 w-full max-w-40 animate-pulse rounded bg-zinc-100" />
-                        </td>
+                    <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                      {secondary.map((column) => (
+                        <div key={column.key} className="min-w-0">
+                          <dt className="text-[11px] tracking-wide text-zinc-400 uppercase">
+                            {column.header}
+                          </dt>
+                          <dd className="truncate text-sm text-zinc-700">
+                            {column.cell(row)}
+                          </dd>
+                        </div>
                       ))}
-                    </tr>
-                  ))
-                : rows.map((row) => (
-                    <tr key={rowKey(row)} className="hover:bg-zinc-50/60">
-                      {columns.map((column) => (
-                        <td
-                          key={column.key}
-                          className={cn(
-                            "px-4 py-2.5 align-middle text-zinc-700",
-                            column.className,
-                          )}
-                        >
-                          {column.cell(row)}
-                        </td>
-                      ))}
-                    </tr>
+                    </dl>
+                  </li>
+                ))}
+          </ul>
+
+          {/* md and up: the real table. */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-zinc-200 bg-zinc-50/80">
+                  {columns.map((column) => (
+                    <th
+                      key={column.key}
+                      scope="col"
+                      className={cn(
+                        "px-4 py-2 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                        column.className,
+                      )}
+                    >
+                      {column.header}
+                    </th>
                   ))}
-            </tbody>
-          </table>
-        </div>
+                </tr>
+              </thead>
+
+              <tbody
+                className={cn("divide-y divide-zinc-100", dimWhileReloading)}
+              >
+                {showSkeleton
+                  ? Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
+                      <tr key={`skeleton-${rowIndex}`}>
+                        {columns.map((column) => (
+                          <td key={column.key} className="px-4 py-2.5">
+                            <span className="block h-4 w-full max-w-40 animate-pulse rounded bg-zinc-100" />
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  : rows.map((row) => (
+                      <tr key={rowKey(row)} className="hover:bg-zinc-50/60">
+                        {columns.map((column) => (
+                          <td
+                            key={column.key}
+                            className={cn(
+                              "px-4 py-2.5 align-middle text-zinc-700",
+                              column.className,
+                            )}
+                          >
+                            {column.cell(row)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {footer && !error && !showEmpty ? footer : null}

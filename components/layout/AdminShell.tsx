@@ -1,19 +1,30 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
 /**
- * Fixed sidebar, scrolling content. The shell owns the only scroll container so
- * the sidebar and topbar stay put on long tables.
+ * Fixed sidebar on desktop, off-canvas drawer on mobile.
+ *
+ * The shell owns the only scroll container so the sidebar and topbar stay put
+ * on long tables. Height is `dvh` rather than `vh` because mobile browsers
+ * shrink the viewport as the address bar hides, and `vh` would leave the last
+ * row under it.
  */
 export default function AdminShell({ children }: { children: ReactNode }) {
+  const [navOpen, setNavOpen] = useState(false);
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
+    <div className="flex h-dvh overflow-hidden">
+      <Sidebar open={navOpen} onNavigate={() => setNavOpen(false)} />
+
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
-        <main className="flex-1 overflow-y-auto px-6 py-6">{children}</main>
+        <Topbar onMenuClick={() => setNavOpen(true)} />
+        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+          {children}
+        </main>
       </div>
     </div>
   );
