@@ -22,10 +22,12 @@ export interface Column<T> {
   hideOnMobile?: boolean;
 }
 
+export type RowKey = string | number;
+
 interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[];
-  rowKey: (row: T) => string | number;
+  rowKey: (row: T) => RowKey;
   loading?: boolean;
   error?: ApiError | null;
   onRetry?: () => void;
@@ -34,9 +36,16 @@ interface DataTableProps<T> {
   emptyAction?: ReactNode;
   /** Usually <Pagination />. */
   footer?: ReactNode;
+  /** Adds a checkbox column. Pass `selected` and `onSelectedChange` with it. */
+  selectable?: boolean;
+  selected?: ReadonlySet<RowKey>;
+  onSelectedChange?: (next: Set<RowKey>) => void;
 }
 
 const SKELETON_ROWS = 5;
+
+const CHECKBOX_CLASS =
+  "h-4 w-4 shrink-0 cursor-pointer rounded border-zinc-300 accent-zinc-900";
 
 /**
  * One table for every list screen, so loading, empty and error states are
@@ -57,6 +66,9 @@ export default function DataTable<T>({
   emptyDescription,
   emptyAction,
   footer,
+  selectable = false,
+  selected,
+  onSelectedChange,
 }: DataTableProps<T>) {
   const showSkeleton = loading && rows.length === 0;
   const showEmpty = !loading && !error && rows.length === 0;
@@ -65,6 +77,34 @@ export default function DataTable<T>({
   const secondary = columns.filter(
     (column) => column !== primary && !column.hideOnMobile,
   );
+
+  const selectionOn = selectable && !!onSelectedChange;
+  const isSelected = (row: T) => selected?.has(rowKey(row)) ?? false;
+  const selectedOnPage = rows.filter(isSelected).length;
+  const allOnPageSelected = rows.length > 0 && selectedOnPage === rows.length;
+
+  const toggleRow = (row: T) => {
+    if (!onSelectedChange) return;
+
+    const next = new Set(selected ?? []);
+    const key = rowKey(row);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    onSelectedChange(next);
+  };
+
+  // Only ever touches keys on this page, so a selection made under one filter
+  // is not silently wiped by paging.
+  const toggleAllOnPage = () => {
+    if (!onSelectedChange) return;
+
+    const next = new Set(selected ?? []);
+    for (const row of rows) {
+      if (allOnPageSelected) next.delete(rowKey(row));
+      else next.add(rowKey(row));
+    }
+    onSelectedChange(next);
+  };
 
   // A refetch over existing rows dims them instead of removing them, so the
   // list does not jump while a filter is applied.
@@ -95,23 +135,35 @@ export default function DataTable<T>({
                   </li>
                 ))
               : rows.map((row) => (
-                  <li key={rowKey(row)} className="px-4 py-3">
-                    <div className="text-sm font-medium text-zinc-900">
-                      {primary.cell(row)}
-                    </div>
+                  <li key={rowKey(row)} className="flex gap-3 px-4 py-3">
+                    {selectionOn ? (
+                      <input
+                        type="checkbox"
+                        aria-label="Select row"
+                        checked={isSelected(row)}
+                        onChange={() => toggleRow(row)}
+                        className={cn(CHECKBOX_CLASS, "mt-1")}
+                      />
+                    ) : null}
 
-                    <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
-                      {secondary.map((column) => (
-                        <div key={column.key} className="min-w-0">
-                          <dt className="text-[11px] tracking-wide text-zinc-400 uppercase">
-                            {column.header}
-                          </dt>
-                          <dd className="truncate text-sm text-zinc-700">
-                            {column.cell(row)}
-                          </dd>
-                        </div>
-                      ))}
-                    </dl>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-zinc-900">
+                        {primary.cell(row)}
+                      </div>
+
+                      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
+                        {secondary.map((column) => (
+                          <div key={column.key} className="min-w-0">
+                            <dt className="text-[11px] tracking-wide text-zinc-400 uppercase">
+                              {column.header}
+                            </dt>
+                            <dd className="truncate text-sm text-zinc-700">
+                              {column.cell(row)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
                   </li>
                 ))}
           </ul>
@@ -121,6 +173,24 @@ export default function DataTable<T>({
             <table className="w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 bg-zinc-50/80">
+                  {selectionOn ? (
+                    <th scope="col" className="w-10 px-4 py-2">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all on this page"
+                        checked={allOnPageSelected}
+                        // Some but not all: show the dash rather than a tick.
+                        ref={(node) => {
+                          if (node)
+                            node.indeterminate =
+                              selectedOnPage > 0 && !allOnPageSelected;
+                        }}
+                        onChange={toggleAllOnPage}
+                        className={CHECKBOX_CLASS}
+                      />
+                    </th>
+                  ) : null}
+
                   {columns.map((column) => (
                     <th
                       key={column.key}
@@ -142,6 +212,7 @@ export default function DataTable<T>({
                 {showSkeleton
                   ? Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
                       <tr key={`skeleton-${rowIndex}`}>
+                        {selectionOn ? <td className="px-4 py-2.5" /> : null}
                         {columns.map((column) => (
                           <td key={column.key} className="px-4 py-2.5">
                             <span className="block h-4 w-full max-w-40 animate-pulse rounded bg-zinc-100" />
@@ -150,7 +221,25 @@ export default function DataTable<T>({
                       </tr>
                     ))
                   : rows.map((row) => (
-                      <tr key={rowKey(row)} className="hover:bg-zinc-50/60">
+                      <tr
+                        key={rowKey(row)}
+                        className={cn(
+                          "hover:bg-zinc-50/60",
+                          isSelected(row) && "bg-zinc-50",
+                        )}
+                      >
+                        {selectionOn ? (
+                          <td className="px-4 py-2.5">
+                            <input
+                              type="checkbox"
+                              aria-label="Select row"
+                              checked={isSelected(row)}
+                              onChange={() => toggleRow(row)}
+                              className={CHECKBOX_CLASS}
+                            />
+                          </td>
+                        ) : null}
+
                         {columns.map((column) => (
                           <td
                             key={column.key}
