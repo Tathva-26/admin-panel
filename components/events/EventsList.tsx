@@ -12,7 +12,8 @@ import Pagination from "@/components/ui/Pagination";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { toApiError } from "@/lib/api/errors";
-import { formatDateTime, formatInr } from "@/lib/format";
+import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
+import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { EVENT_TYPES, type AdminEvent } from "@/types";
 
@@ -76,6 +77,43 @@ interface BulkOutcome {
   failures: { id: number; message: string }[];
 }
 
+const EXPORT_HEADERS = [
+  "ID",
+  "Event",
+  "Type",
+  "State",
+  "Starts",
+  "Ends",
+  "Price (INR)",
+  "Capacity",
+  "Venue",
+  "Committee",
+  "Team event",
+  "Team size",
+];
+
+const toExportRow = (event: AdminEvent) => [
+  event.id,
+  event.heading,
+  event.type,
+  event.published ? "Published" : "Draft",
+  event.startTime ?? event.datetime
+    ? formatDateTime(event.startTime ?? event.datetime)
+    : "",
+  event.endTime ? formatDateTime(event.endTime) : "",
+  // Rupees as a plain decimal, which is what a spreadsheet can sum.
+  paiseToRupeeInput(event.price),
+  event.capacity ?? "",
+  event.venue?.name ?? "",
+  event.committee ?? "",
+  event.isTeamEvent ? "Yes" : "No",
+  event.teamSize ?? "",
+];
+
+/** Paged through rather than requested in one go, and capped so a bad `total` cannot spin forever. */
+const EXPORT_PAGE_SIZE = 100;
+const EXPORT_MAX_ROWS = 2000;
+
 export default function EventsList() {
   const events = useList<AdminEvent>(({ page, pageSize, filters }) =>
     listEvents({
@@ -89,7 +127,53 @@ export default function EventsList() {
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
+
+  const activeQuery = {
+    search: asText(events.filters.search),
+    type: asEnum(events.filters.type, EVENT_TYPES),
+    published: asBool(events.filters.published),
+  };
+
+  /** Exports everything matching the current filters, not just this page. */
+  async function exportCsv() {
+    setExporting(true);
+    setOutcome(null);
+
+    try {
+      const rows: AdminEvent[] = [];
+      let page = 1;
+      let total = Number.POSITIVE_INFINITY;
+
+      while (rows.length < Math.min(total, EXPORT_MAX_ROWS)) {
+        const result = await listEvents({
+          ...activeQuery,
+          page,
+          pageSize: EXPORT_PAGE_SIZE,
+        });
+
+        total = result.total;
+        if (result.items.length === 0) break;
+
+        rows.push(...result.items);
+        page += 1;
+      }
+
+      downloadCsv(
+        timestampedFilename("events"),
+        toCsv(EXPORT_HEADERS, rows.map(toExportRow)),
+      );
+    } catch (error) {
+      setOutcome({
+        action: "Export",
+        succeeded: 0,
+        failures: [{ id: 0, message: toApiError(error).message }],
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   // Only act on rows actually on screen. A selection made before paging or
   // filtering should not quietly publish something you can no longer see.
@@ -157,6 +241,16 @@ export default function EventsList() {
             <option value="false">Draft</option>
           </Select>
         </div>
+
+        <Button
+          size="sm"
+          className="sm:ml-auto"
+          loading={exporting}
+          disabled={events.total === 0}
+          onClick={exportCsv}
+        >
+          Export CSV
+        </Button>
       </div>
 
       {outcome ? (
