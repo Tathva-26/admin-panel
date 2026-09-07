@@ -1,0 +1,47 @@
+"use client";
+
+import { isRetryable, type ApiError } from "@/lib/api/errors";
+
+import Button from "./Button";
+
+/**
+ * The screen behind every failed request.
+ *
+ * Until the backend ships `/api/admin/*` this is most of what the panel shows,
+ * so it states what actually went wrong — status and code included — rather
+ * than a generic apology.
+ */
+export default function ErrorState({
+  error,
+  onRetry,
+}: {
+  error: ApiError;
+  onRetry?: () => void;
+}) {
+  const retryable = isRetryable(error);
+
+  return (
+    <div className="px-6 py-12 text-center">
+      <p className="text-sm font-medium text-zinc-800">{error.message}</p>
+
+      <p className="numeric mt-1 text-xs text-zinc-400">
+        {error.status ? `${error.status} · ` : ""}
+        {error.code}
+      </p>
+
+      {error.retryAfter ? (
+        <p className="mt-2 text-xs text-zinc-500">
+          Try again in {error.retryAfter}s.
+        </p>
+      ) : null}
+
+      {onRetry && retryable ? (
+        <div className="mt-4">
+          <Button size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}

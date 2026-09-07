@@ -1,37 +1,103 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tathva '26 Admin Panel
 
-## Getting Started
+Internal admin tool for the Tathva team. Next 16 (App Router), React 19, TypeScript, Tailwind
+v4, axios.
 
-First, run the development server:
+## Running it
 
 ```bash
+npm install
+cp .env.example .env.local   # point NEXT_PUBLIC_API_URL at the backend
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`NEXT_PUBLIC_API_URL` is the backend **origin**, without `/api` — the client appends that
+itself, so paths stay as `/admin/events`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Current state
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The backend does not expose `/api/admin/*` yet, so **screens will show their error state**
+("Could not reach the server", or a `404 NOT_FOUND` if the backend is running). That is
+expected, not a bug. The request path, error parsing and every empty/error/loading state are
+real and working — only the data is missing.
 
-## Learn More
+Auth is deliberately not implemented yet. `lib/api/client.ts` has a single interceptor that
+will attach the bearer token when we get to it; nothing else reads a token.
 
-To learn more about Next.js, take a look at the following resources:
+## Layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+app/            routes — one folder per section, thin
+components/
+  layout/       AdminShell, Sidebar, Topbar, PageHeader
+  ui/           Button, Input/Select/Textarea, Field, Badge, Card, Modal,
+                Pagination, Spinner, EmptyState, ErrorState
+  common/       DataTable, SearchInput, ConfirmDialog, StatusBadge
+hooks/          useApi, useList, useMutation
+lib/
+  api/          client.ts (axios + helpers), errors.ts, one file per resource
+  format.ts     paise ↔ rupees, ISO ↔ IST
+  params.ts     URL string → typed query value
+  nav.ts        sidebar sections
+types/          contract types, mirroring admin-panel-frontend-api.md
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Adding a section
 
-## Deploy on Vercel
+1. Add the resource module in `lib/api/`, using the `get` / `post` / `patch` / `del` helpers
+   from `client.ts` — don't import axios directly:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```ts
+   export const listVenues = (q: ListQuery) =>
+     get<ListResponse<Venue>>("/admin/venues", { ...q });
+   export const createVenue = (body: VenueInput) =>
+     post<Venue>("/admin/venues", body, "venue");
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# admin-panel
+   The third argument unwraps `{ "venue": { … } }`. List endpoints return
+   `{ items, page, pageSize, total }` directly, so they don't need it.
+
+2. Add the section to `NAV_ITEMS` in `lib/nav.ts` — one line, no edit to `Sidebar.tsx`.
+
+3. Build the page with `useList` + `DataTable`, and forms with `useMutation` + `Field`.
+
+### What `DataTable` gives you without extra work
+
+- Loading skeletons, empty state and error state with retry.
+- A mobile card layout below `md`. Mark one column `primary` (it becomes the
+  card heading) and `hideOnMobile: true` on the ones that don't matter on a phone.
+- Row selection: pass `selectable`, `selected` and `onSelectedChange`, then put
+  your actions inside `<BulkActionBar>`. See `components/events/EventsList.tsx`
+  — it runs bulk actions with `Promise.allSettled` so one failure doesn't
+  abandon the rest, and reports which rows failed.
+- CSV export is `toCsv` + `downloadCsv` from `lib/csv.ts`. It handles quoting,
+  Excel's UTF-8 BOM, and neutralising cells that would otherwise be read as
+  spreadsheet formulas.
+
+Sections are also searchable from the ⌘K palette automatically, because it reads
+`NAV_ITEMS`.
+
+## Things worth knowing
+
+- **Money is integer paise.** Use `formatInr` / `rupeeInputToPaise` from `lib/format.ts`.
+  Never `parseFloat(x) * 100` — `4.99 * 100` is `498.99999999999994`.
+- **Dates go over the wire as ISO, and are shown in IST** regardless of the viewer's clock.
+  `isoToDateTimeInput` / `dateTimeInputToIso` handle `<input type="datetime-local">`.
+- **List state lives in the URL.** `useList` keeps page and filters in the query string, so a
+  filtered view survives a reload and can be pasted to someone else.
+- **`useSearchParams` needs a `<Suspense>` boundary** in Next 16 — wrap the client body of any
+  page using `useList`.
+- **A 422 populates `useMutation().fields`**, keyed by `details.issues[].path`. Pass the entry
+  straight to `<Field error={…}>` and validation lands beside the right input.
+- **Run `npx next typegen`** if `PageProps` / `LayoutProps` come up as unknown types; they are
+  generated, not written by hand.
+
+## Who's doing what
+
+| | Satrajit | Partner |
+| --- | --- | --- |
+| Shared layer | client, types, errors, hooks, `components/ui`, shell | — |
+| Sections | Events, Dashboard | Venues, Announcements, Users, Bookings |
+
+One owner per section — don't edit a file in the other person's section. Shared files change by
+asking, not editing, so we don't both touch the same lines.

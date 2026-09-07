@@ -1,14 +1,14 @@
-import DashboardView from "@/components/dashboard/DashboardView";
+import NotBuiltYet from "@/components/common/NotBuiltYet";
 import PageHeader from "@/components/layout/PageHeader";
 import { getNavItem } from "@/lib/nav";
 
-const nav = getNavItem("/");
+const nav = getNavItem("/venues");
 
-export default function DashboardPage() {
+export default function VenuesPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <DashboardView />
+      <NotBuiltYet />
     </>
   );
 }
