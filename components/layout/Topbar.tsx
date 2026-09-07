@@ -1,11 +1,8 @@
 "use client";
 
-/**
- * Which backend the panel is talking to is the first question when a screen
- * comes up empty, so it is worth showing — but only when it is not the real
- * one. Pointed at production this renders nothing, which is the common case
- * and should be quiet.
- */
+import Button from "@/components/ui/Button";
+import { useAuth } from "@/context/AuthContext";
+
 function apiTargetLabel(origin: string): string | null {
   try {
     const { hostname, port } = new URL(origin);
@@ -17,7 +14,6 @@ function apiTargetLabel(origin: string): string | null {
 
     return null;
   } catch {
-    // A malformed value is worth surfacing rather than swallowing.
     return origin;
   }
 }
@@ -29,8 +25,9 @@ export default function Topbar({
   onMenuClick: () => void;
   onSearchClick: () => void;
 }) {
+  const { user, logout } = useAuth();
   const target = apiTargetLabel(
-    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000",
+    process.env.NEXT_PUBLIC_API_URL ?? "",
   );
 
   return (
@@ -53,10 +50,6 @@ export default function Topbar({
         </svg>
       </button>
 
-      {/*
-        A keyboard-only feature nobody knows about is not a feature, so the
-        shortcut gets a visible affordance.
-      */}
       <button
         type="button"
         onClick={onSearchClick}
@@ -82,11 +75,37 @@ export default function Topbar({
       {target ? (
         <span
           title={process.env.NEXT_PUBLIC_API_URL}
-          className="numeric ml-auto hidden rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-500 sm:inline"
+          className="numeric hidden rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-500 sm:inline"
         >
           {target}
         </span>
       ) : null}
+
+      <div className="ml-auto flex items-center gap-3">
+        {user ? (
+          <div className="flex items-center gap-2.5">
+            <div className="hidden text-right sm:block">
+              <div className="flex items-center justify-end gap-1.5">
+                <span className="text-xs font-semibold text-zinc-900">
+                  {user.name}
+                </span>
+                <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-[10px] font-bold text-white uppercase">
+                  {user.role}
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-500">{user.email}</p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={logout}
+              className="text-xs"
+            >
+              Sign Out
+            </Button>
+          </div>
+        ) : null}
+      </div>
     </header>
   );
 }
