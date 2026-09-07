@@ -22,7 +22,13 @@ function apiTargetLabel(origin: string): string | null {
   }
 }
 
-export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
+export default function Topbar({
+  onMenuClick,
+  onSearchClick,
+}: {
+  onMenuClick: () => void;
+  onSearchClick: () => void;
+}) {
   const target = apiTargetLabel(
     process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000",
   );
@@ -45,6 +51,32 @@ export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         >
           <path d="M3 6h14M3 10h14M3 14h14" strokeLinecap="round" />
         </svg>
+      </button>
+
+      {/*
+        A keyboard-only feature nobody knows about is not a feature, so the
+        shortcut gets a visible affordance.
+      */}
+      <button
+        type="button"
+        onClick={onSearchClick}
+        className="flex items-center gap-2 rounded-md border border-zinc-200 px-2.5 py-1.5 text-sm text-zinc-500 hover:bg-zinc-50 hover:text-zinc-700"
+      >
+        <svg
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <circle cx="9" cy="9" r="5.5" />
+          <path d="M13 13l4 4" strokeLinecap="round" />
+        </svg>
+        <span className="hidden sm:inline">Search</span>
+        <kbd className="numeric hidden rounded border border-zinc-200 bg-zinc-50 px-1 text-[11px] text-zinc-400 sm:inline">
+          ⌘K
+        </kbd>
       </button>
 
       {target ? (
