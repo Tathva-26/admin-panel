@@ -1,15 +1,31 @@
 "use client";
 
 /**
- * Deliberately not a copy of the page title — that lives in PageHeader.
- *
- * What is actually useful in the chrome of an internal tool is knowing which
- * backend you are pointed at, since that is the first question when a screen
- * is empty. On a phone that is noise, so it drops away and the menu button
- * takes the space.
+ * Which backend the panel is talking to is the first question when a screen
+ * comes up empty, so it is worth showing — but only when it is not the real
+ * one. Pointed at production this renders nothing, which is the common case
+ * and should be quiet.
  */
+function apiTargetLabel(origin: string): string | null {
+  try {
+    const { hostname, port } = new URL(origin);
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `local:${port || "80"}`;
+    }
+    if (/staging|dev|test/i.test(hostname)) return hostname;
+
+    return null;
+  } catch {
+    // A malformed value is worth surfacing rather than swallowing.
+    return origin;
+  }
+}
+
 export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
-  const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+  const target = apiTargetLabel(
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000",
+  );
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-4 sm:px-6">
@@ -31,14 +47,14 @@ export default function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
         </svg>
       </button>
 
-      <div className="ml-auto flex items-center gap-3">
-        <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs whitespace-nowrap text-amber-700">
-          Auth disabled
+      {target ? (
+        <span
+          title={process.env.NEXT_PUBLIC_API_URL}
+          className="numeric ml-auto hidden rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs text-zinc-500 sm:inline"
+        >
+          {target}
         </span>
-        <span className="numeric hidden text-xs text-zinc-500 sm:inline">
-          {apiOrigin}/api
-        </span>
-      </div>
+      ) : null}
     </header>
   );
 }
