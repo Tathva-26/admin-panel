@@ -1,4 +1,4 @@
-import NotBuiltYet from "@/components/common/NotBuiltYet";
+import DashboardView from "@/components/dashboard/DashboardView";
 import PageHeader from "@/components/layout/PageHeader";
 import { getNavItem } from "@/lib/nav";
 
@@ -8,7 +8,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <NotBuiltYet />
+      <DashboardView />
     </>
   );
 }
