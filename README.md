@@ -61,6 +61,22 @@ types/          contract types, mirroring admin-panel-frontend-api.md
 
 3. Build the page with `useList` + `DataTable`, and forms with `useMutation` + `Field`.
 
+### What `DataTable` gives you without extra work
+
+- Loading skeletons, empty state and error state with retry.
+- A mobile card layout below `md`. Mark one column `primary` (it becomes the
+  card heading) and `hideOnMobile: true` on the ones that don't matter on a phone.
+- Row selection: pass `selectable`, `selected` and `onSelectedChange`, then put
+  your actions inside `<BulkActionBar>`. See `components/events/EventsList.tsx`
+  — it runs bulk actions with `Promise.allSettled` so one failure doesn't
+  abandon the rest, and reports which rows failed.
+- CSV export is `toCsv` + `downloadCsv` from `lib/csv.ts`. It handles quoting,
+  Excel's UTF-8 BOM, and neutralising cells that would otherwise be read as
+  spreadsheet formulas.
+
+Sections are also searchable from the ⌘K palette automatically, because it reads
+`NAV_ITEMS`.
+
 ## Things worth knowing
 
 - **Money is integer paise.** Use `formatInr` / `rupeeInputToPaise` from `lib/format.ts`.
