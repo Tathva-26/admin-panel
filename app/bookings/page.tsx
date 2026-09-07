@@ -8,7 +8,7 @@ export default function BookingsPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <NotBuiltYet owner="partner" />
+      <NotBuiltYet />
     </>
   );
 }

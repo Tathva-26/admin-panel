@@ -8,7 +8,7 @@ export default function UsersPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <NotBuiltYet owner="partner" />
+      <NotBuiltYet />
     </>
   );
 }

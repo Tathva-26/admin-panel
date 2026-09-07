@@ -8,7 +8,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <NotBuiltYet owner="Satrajit" />
+      <NotBuiltYet />
     </>
   );
 }
