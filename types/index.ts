@@ -38,14 +38,20 @@ export interface ApiErrorBody {
   };
 }
 
-/** Query params common to every list endpoint. */
-export interface ListQuery {
+/**
+ * Query params common to every list endpoint.
+ *
+ * Query types are `type` aliases rather than interfaces on purpose: only
+ * aliases get an implicit index signature, which is what lets them be passed
+ * straight to the client's `QueryParams`.
+ */
+export type ListQuery = {
   page?: number;
   pageSize?: number;
   search?: string;
   sort?: string;
   order?: "asc" | "desc";
-}
+};
 
 /* ------------------------------------------------------------------ */
 /* Events                                                              */
@@ -116,10 +122,10 @@ export interface EventInput {
   published?: boolean;
 }
 
-export interface EventQuery extends ListQuery {
+export type EventQuery = ListQuery & {
   type?: EventType;
   published?: boolean;
-}
+};
 
 /* ------------------------------------------------------------------ */
 /* Venues                                                              */
@@ -159,9 +165,9 @@ export interface AnnouncementInput {
   published?: boolean;
 }
 
-export interface AnnouncementQuery extends ListQuery {
+export type AnnouncementQuery = ListQuery & {
   published?: boolean;
-}
+};
 
 /* ------------------------------------------------------------------ */
 /* Users                                                               */
@@ -189,9 +195,9 @@ export interface AdminUser {
   updatedAt: string;
 }
 
-export interface UserQuery extends ListQuery {
+export type UserQuery = ListQuery & {
   role?: Role;
-}
+};
 
 export interface RoleInput {
   role: Role;
@@ -240,16 +246,17 @@ export interface Booking {
   currency: string;
   user: BookingUser;
   event: BookingEvent | null;
-  accommodation: unknown | null;
+  /** Present on accommodation bookings; shape not modelled until we show it. */
+  accommodation: unknown;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface BookingQuery extends ListQuery {
+export type BookingQuery = ListQuery & {
   status?: BookingStatus;
   kind?: BookingKind;
   eventId?: number;
-}
+};
 
 export interface BookingStatusInput {
   status: BookingStatus;
