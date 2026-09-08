@@ -92,7 +92,9 @@ export default function EventsList({
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
 
   const isNewParam = searchParams.get("new") === "true";
-  const modalOpen = formOpen || createOpen || isNewParam;
+  const eventIdParam = searchParams.get("eventId");
+  const targetEventId = eventIdParam ? Number(eventIdParam) : null;
+  const modalOpen = formOpen || createOpen || isNewParam || !!targetEventId;
 
   useEffect(() => {
     const handleOpen = () => {
@@ -108,6 +110,9 @@ export default function EventsList({
     setEditingEvent(null);
     if (searchParams.get("new") === "true") {
       events.setFilter("new", null);
+    }
+    if (searchParams.get("eventId")) {
+      events.setFilter("eventId", null);
     }
     onCreateClose?.();
   }, [events, searchParams, onCreateClose]);
@@ -401,6 +406,7 @@ export default function EventsList({
         open={modalOpen}
         onClose={closeForm}
         event={editingEvent}
+        eventId={editingEvent ? null : targetEventId}
         onSaved={handleSaved}
       />
     </div>

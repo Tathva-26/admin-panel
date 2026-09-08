@@ -62,30 +62,19 @@ export default function AttentionPanel({
               className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
-                <Link
-                  href={`/events?search=${encodeURIComponent(item.heading)}`}
-                  className="truncate text-xs font-bold text-zinc-900 hover:text-blue-600 block"
-                >
-                  {item.issue} for &ldquo;{item.heading}&rdquo;
-                </Link>
-                <Link
-                  href={`/events?search=${encodeURIComponent(item.heading)}`}
-                  className="text-[11px] font-semibold text-zinc-900 hover:underline block mt-0.5"
-                >
-                  (linked)
-                </Link>
+                <p className="truncate text-xs font-bold text-zinc-900">
+                  {item.issue}
+                </p>
+                <p className="truncate text-[11px] font-medium text-zinc-500 mt-0.5">
+                  &ldquo;{item.heading}&rdquo;
+                </p>
               </div>
 
-              {/* Compact Rectangular Status Controls */}
               <Link
-                href={`/events?search=${encodeURIComponent(item.heading)}`}
-                className={
-                  item.severity === "warn"
-                    ? "bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-3 py-1 rounded text-center shrink-0 uppercase tracking-wider"
-                    : "bg-zinc-200 hover:bg-zinc-300 text-zinc-800 font-bold text-xs px-3 py-1 rounded text-center shrink-0 uppercase tracking-wider"
-                }
+                href={`/events?eventId=${item.eventId}`}
+                className="bg-zinc-900 hover:bg-black text-white font-semibold text-xs px-3 py-1 rounded text-center shrink-0 uppercase tracking-wider transition-colors"
               >
-                {item.severity === "warn" ? "Fix" : "Check"}
+                Check
               </Link>
             </div>
           ))}
