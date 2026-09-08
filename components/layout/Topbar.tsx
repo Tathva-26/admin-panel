@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 import Avatar from "@/components/common/Avatar";
 import { useAuth } from "@/context/AuthContext";
+import { roleLabel } from "@/lib/labels";
 
 /**
  * Deliberately carries no page title.
@@ -66,17 +69,23 @@ export default function Topbar({
       </button>
 
       {user ? (
-        <div className="ml-auto flex shrink-0 items-center gap-2 rounded-md border border-zinc-200 bg-white py-1 pr-2.5 pl-1">
+        // A link, not a div. It looked pressable and did nothing, which is a
+        // worse offence than not looking pressable at all.
+        <Link
+          href="/profile"
+          aria-label="Your profile"
+          className="ml-auto flex shrink-0 items-center gap-2 rounded-md border border-zinc-200 bg-white py-1 pr-2.5 pl-1 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+        >
           <Avatar name={user.name} seed={user.email} className="h-6 w-6" />
+          {/* Truncated, so a long name cannot push the chip off the bar. The
+              full name is readable on the profile page. */}
           <div className="hidden min-w-0 md:block">
             <p className="max-w-35 truncate text-xs font-semibold text-zinc-900">
               {user.name}
             </p>
-            <p className="max-w-35 truncate text-[11px] text-zinc-500">
-              {user.role}
-            </p>
+            <p className="text-[11px] text-zinc-500">{roleLabel(user.role)}</p>
           </div>
-        </div>
+        </Link>
       ) : null}
     </header>
   );
