@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-import Badge from "@/components/ui/Badge";
 import ErrorState from "@/components/ui/ErrorState";
 import type { ApiError } from "@/lib/api/errors";
 import type { AttentionItem } from "@/lib/attention";
@@ -12,7 +11,6 @@ interface AttentionPanelProps {
   loading: boolean;
   error: ApiError | null;
   onRetry: () => void;
-  /** How many events the checks ran over, for the all-clear line. */
   checked: number;
 }
 
@@ -24,52 +22,63 @@ export default function AttentionPanel({
   checked,
 }: AttentionPanelProps) {
   return (
-    <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
-      <header className="flex items-center justify-between border-b border-zinc-200 px-4 py-2.5">
-        <h2 className="text-sm font-semibold text-zinc-900">Needs attention</h2>
-        {!loading && !error && items.length > 0 ? (
-          <span className="numeric text-xs text-zinc-500">{items.length}</span>
-        ) : null}
-      </header>
+    <section className="bg-white rounded-md border border-zinc-200 p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-extrabold text-zinc-900">Needs attention</h2>
+          {!loading && !error && items.length > 0 ? (
+            <span className="bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded text-xs">
+              {items.length}
+            </span>
+          ) : null}
+        </div>
+      </div>
 
+      {/* Content */}
       {error ? (
         <ErrorState error={error} onRetry={onRetry} />
       ) : loading ? (
-        <ul className="divide-y divide-zinc-100">
+        <div className="space-y-3">
           {Array.from({ length: 3 }, (_, index) => (
-            <li key={index} className="px-4 py-3">
-              <span className="block h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
-            </li>
+            <div key={index} className="flex items-center justify-between py-2 border-b border-zinc-100 last:border-0">
+              <div className="h-4 w-3/4 animate-pulse rounded bg-zinc-100" />
+              <div className="h-6 w-12 animate-pulse rounded bg-zinc-100" />
+            </div>
           ))}
-        </ul>
+        </div>
       ) : items.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-zinc-500">
+        <p className="py-6 text-center text-xs font-medium text-zinc-500">
           Nothing to flag across {checked} event{checked === 1 ? "" : "s"}.
         </p>
       ) : (
-        <ul className="divide-y divide-zinc-100">
+        <div className="divide-y divide-zinc-100">
           {items.map((item) => (
-            <li
+            <div
               key={item.id}
-              className="flex flex-col gap-1 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
             >
-              <div className="min-w-0">
-                <Link
-                  href={`/events?search=${encodeURIComponent(item.heading)}`}
-                  className="truncate text-sm font-medium text-zinc-900 hover:underline"
-                >
-                  {item.heading}
-                </Link>
-                <p className="text-sm text-zinc-500">{item.issue}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-zinc-900">
+                  {item.issue}
+                </p>
+                <p className="truncate text-[11px] font-medium text-zinc-500 mt-0.5">
+                  &ldquo;{item.heading}&rdquo;
+                </p>
               </div>
 
-              <Badge tone={item.severity === "warn" ? "amber" : "neutral"}>
-                {item.severity === "warn" ? "Fix" : "Check"}
-              </Badge>
-            </li>
+              <Link
+                href={`/events?eventId=${item.eventId}`}
+                className="bg-zinc-900 hover:bg-black text-white font-semibold text-xs px-3 py-1 rounded text-center shrink-0 uppercase tracking-wider transition-colors"
+              >
+                Check
+              </Link>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </section>
   );
 }
+
+

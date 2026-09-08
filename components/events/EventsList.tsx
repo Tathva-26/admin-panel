@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
 import BulkActionBar from "@/components/common/BulkActionBar";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
@@ -11,65 +12,20 @@ import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
-import { toApiError } from "@/lib/api/errors";
+import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
 import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { asBool, asEnum, asText } from "@/lib/params";
+import { refreshDashboard } from "@/lib/refresh";
 import { EVENT_TYPES, type AdminEvent } from "@/types";
 
-const COLUMNS: Column<AdminEvent>[] = [
-  {
-    key: "id",
-    header: "ID",
-    className: "numeric w-16 text-zinc-400",
-    hideOnMobile: true,
-    cell: (event) => event.id,
-  },
-  {
-    key: "heading",
-    header: "Event",
-    primary: true,
-    cell: (event) => (
-      <div className="min-w-0">
-        <p className="truncate font-medium text-zinc-900">{event.heading}</p>
-        {event.venue ? (
-          <p className="truncate text-xs text-zinc-500">{event.venue.name}</p>
-        ) : null}
-      </div>
-    ),
-  },
-  {
-    key: "type",
-    header: "Type",
-    className: "w-32 text-zinc-600 capitalize",
-    cell: (event) => event.type,
-  },
-  {
-    key: "datetime",
-    header: "Starts",
-    className: "numeric w-48 text-zinc-600",
-    cell: (event) => formatDateTime(event.startTime ?? event.datetime),
-  },
-  {
-    key: "price",
-    header: "Price",
-    className: "numeric w-28 text-right",
-    cell: (event) => formatInr(event.price),
-  },
-  {
-    key: "capacity",
-    header: "Capacity",
-    className: "numeric w-24 text-right text-zinc-600",
-    hideOnMobile: true,
-    cell: (event) => event.capacity ?? "—",
-  },
-  {
-    key: "published",
-    header: "State",
-    className: "w-28",
-    cell: (event) => <PublishedBadge published={event.published} />,
-  },
-];
+import EventFormModal from "./EventFormModal";
+import EventRowActions from "./EventRowActions";
+
+interface EventsListProps {
+  createOpen?: boolean;
+  onCreateClose?: () => void;
+}
 
 interface BulkOutcome {
   action: string;
@@ -101,7 +57,6 @@ const toExportRow = (event: AdminEvent) => [
     ? formatDateTime(event.startTime ?? event.datetime)
     : "",
   event.endTime ? formatDateTime(event.endTime) : "",
-  // Rupees as a plain decimal, which is what a spreadsheet can sum.
   paiseToRupeeInput(event.price),
   event.capacity ?? "",
   event.venue?.name ?? "",
@@ -110,11 +65,15 @@ const toExportRow = (event: AdminEvent) => [
   event.teamSize ?? "",
 ];
 
-/** Paged through rather than requested in one go, and capped so a bad `total` cannot spin forever. */
 const EXPORT_PAGE_SIZE = 100;
 const EXPORT_MAX_ROWS = 2000;
 
-export default function EventsList() {
+export default function EventsList({
+  createOpen = false,
+  onCreateClose,
+}: EventsListProps) {
+  const searchParams = useSearchParams();
+
   const events = useList<AdminEvent>(({ page, pageSize, filters }) =>
     listEvents({
       page,
@@ -122,21 +81,78 @@ export default function EventsList() {
       search: asText(filters.search),
       type: asEnum(filters.type, EVENT_TYPES),
       published: asBool(filters.published),
+      sort: asText(filters.sort),
+      order: asEnum(filters.order, ["asc", "desc"]),
     }),
   );
+  const refetchEvents = events.refetch;
+  const setEventFilter = events.setFilter;
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
 
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
+
+  const isNewParam = searchParams.get("new") === "true";
+  const eventIdParam = searchParams.get("eventId");
+  const targetEventId = eventIdParam ? Number(eventIdParam) : null;
+  const modalOpen = formOpen || createOpen || isNewParam || !!targetEventId;
+
+  useEffect(() => {
+    const handleOpen = () => {
+      setEditingEvent(null);
+      setFormOpen(true);
+    };
+    window.addEventListener("open-create-event", handleOpen);
+    return () => window.removeEventListener("open-create-event", handleOpen);
+  }, []);
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    setEditingEvent(null);
+    if (searchParams.get("new") === "true") {
+      setEventFilter("new", null);
+    }
+    if (searchParams.get("eventId")) {
+      setEventFilter("eventId", null);
+    }
+    onCreateClose?.();
+  }, [searchParams, onCreateClose, setEventFilter]);
+
+  const handleEdit = useCallback((event: AdminEvent) => {
+    setEditingEvent(event);
+    setFormOpen(true);
+  }, []);
+
+  const handleSaved = useCallback(() => {
+    refetchEvents();
+    refreshDashboard();
+  }, [refetchEvents]);
+
+  const handleMutated = useCallback(() => {
+    refetchEvents();
+    refreshDashboard();
+  }, [refetchEvents]);
+
+  const handleRowError = useCallback((action: string, err: ApiError) => {
+    setOutcome({
+      action,
+      succeeded: 0,
+      failures: [{ id: 0, message: apiErrorMessage(err) }],
+    });
+  }, []);
+
   const activeQuery = {
     search: asText(events.filters.search),
     type: asEnum(events.filters.type, EVENT_TYPES),
     published: asBool(events.filters.published),
+    sort: asText(events.filters.sort),
+    order: asEnum(events.filters.order, ["asc", "desc"]),
   };
 
-  /** Exports everything matching the current filters, not just this page. */
   async function exportCsv() {
     setExporting(true);
     setOutcome(null);
@@ -168,15 +184,13 @@ export default function EventsList() {
       setOutcome({
         action: "Export",
         succeeded: 0,
-        failures: [{ id: 0, message: toApiError(error).message }],
+        failures: [{ id: 0, message: apiErrorMessage(toApiError(error)) }],
       });
     } finally {
       setExporting(false);
     }
   }
 
-  // Only act on rows actually on screen. A selection made before paging or
-  // filtering should not quietly publish something you can no longer see.
   const targets = events.items.filter((event) => selected.has(event.id));
 
   async function runBulk(
@@ -189,25 +203,91 @@ export default function EventsList() {
     setBusy(true);
     setOutcome(null);
 
-    // allSettled, not all: one rejected event should not abandon the rest, and
-    // the admin needs to know exactly which ones did not go through.
     const results = await Promise.allSettled(ids.map((id) => call(id)));
 
     const failures = results.flatMap((result, index) =>
       result.status === "rejected"
-        ? [{ id: ids[index], message: toApiError(result.reason).message }]
+        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
         : [],
     );
 
     setBusy(false);
     setSelected(new Set());
     setOutcome({ action, succeeded: ids.length - failures.length, failures });
-    events.refetch();
+    refetchEvents();
+    refreshDashboard();
   }
+
+  const columns: Column<AdminEvent>[] = [
+    {
+      key: "id",
+      header: "ID",
+      className: "numeric w-16 text-zinc-400",
+      hideOnMobile: true,
+      cell: (event) => event.id,
+    },
+    {
+      key: "heading",
+      header: "Event",
+      primary: true,
+      cell: (event) => (
+        <div className="min-w-0">
+          <p className="truncate font-medium text-zinc-900">{event.heading}</p>
+          {event.venue ? (
+            <p className="truncate text-xs text-zinc-500">{event.venue.name}</p>
+          ) : null}
+        </div>
+      ),
+    },
+    {
+      key: "type",
+      header: "Type",
+      className: "w-32 text-zinc-600 capitalize",
+      cell: (event) => event.type,
+    },
+    {
+      key: "datetime",
+      header: "Starts",
+      className: "numeric w-48 text-zinc-600",
+      cell: (event) => formatDateTime(event.startTime ?? event.datetime),
+    },
+    {
+      key: "price",
+      header: "Price",
+      className: "numeric w-28 text-right",
+      cell: (event) => formatInr(event.price),
+    },
+    {
+      key: "capacity",
+      header: "Capacity",
+      className: "numeric w-24 text-right text-zinc-600",
+      hideOnMobile: true,
+      cell: (event) => event.capacity ?? "—",
+    },
+    {
+      key: "published",
+      header: "State",
+      className: "w-28",
+      cell: (event) => <PublishedBadge published={event.published} />,
+    },
+    {
+      key: "actions",
+      header: "",
+      className: "w-12",
+      hideOnMobile: true,
+      cell: (event) => (
+        <EventRowActions
+          event={event}
+          onEdit={handleEdit}
+          onMutated={handleMutated}
+          onError={handleRowError}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-3">
-      {/* Stacked on a phone, inline once there is room for it. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         <SearchInput
           value={events.filters.search ?? ""}
@@ -240,17 +320,50 @@ export default function EventsList() {
             <option value="true">Published</option>
             <option value="false">Draft</option>
           </Select>
+
+          <Select
+            aria-label="Sort events by"
+            className="h-9 w-full sm:h-8 sm:w-40"
+            value={events.filters.sort ?? ""}
+            onChange={(e) => events.setFilter("sort", e.target.value)}
+          >
+            <option value="">Sort by</option>
+            <option value="datetime">Start date</option>
+            <option value="heading">Event name</option>
+            <option value="createdAt">Created date</option>
+          </Select>
+
+          <Select
+            aria-label="Sort order"
+            className="h-9 w-full sm:h-8 sm:w-36"
+            value={events.filters.order ?? "asc"}
+            onChange={(e) => events.setFilter("order", e.target.value)}
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
+          </Select>
         </div>
 
-        <Button
-          size="sm"
-          className="sm:ml-auto"
-          loading={exporting}
-          disabled={events.total === 0}
-          onClick={exportCsv}
-        >
-          Export CSV
-        </Button>
+        <div className="flex gap-2 sm:ml-auto">
+          <Button
+            size="sm"
+            loading={exporting}
+            disabled={events.total === 0}
+            onClick={exportCsv}
+          >
+            Export CSV
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => {
+              setEditingEvent(null);
+              setFormOpen(true);
+            }}
+          >
+            + New Event
+          </Button>
+        </div>
       </div>
 
       {outcome ? (
@@ -281,7 +394,7 @@ export default function EventsList() {
       ) : null}
 
       <DataTable
-        columns={COLUMNS}
+        columns={columns}
         rows={events.items}
         rowKey={(event) => event.id}
         loading={events.loading}
@@ -320,6 +433,14 @@ export default function EventsList() {
           Unpublish
         </Button>
       </BulkActionBar>
+
+      <EventFormModal
+        open={modalOpen}
+        onClose={closeForm}
+        event={editingEvent}
+        eventId={editingEvent ? null : targetEventId}
+        onSaved={handleSaved}
+      />
     </div>
   );
 }

@@ -14,7 +14,7 @@ import axios from "axios";
  * The contract roots every path at `/api`, so that is appended here rather than
  * repeated in every call.
  */
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
@@ -34,6 +34,19 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined" && error.response?.status === 401) {
+      window.localStorage.removeItem("jwt");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login?error=session_expired";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 /* ------------------------------------------------------------------ */
 /* Request helpers                                                     */
