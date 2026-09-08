@@ -171,7 +171,8 @@ export default function BookingsList() {
     {
       key: "qty",
       header: "Qty",
-      className: "numeric w-16 text-right text-zinc-600",
+      align: "right",
+      className: "numeric w-16 text-zinc-600",
       hideOnMobile: true,
       cell: (booking) => booking.qty,
     },
@@ -179,7 +180,8 @@ export default function BookingsList() {
       key: "amountTotal",
       sortKey: "amountTotal",
       header: "Total",
-      className: "numeric w-28 text-right",
+      align: "right",
+      className: "numeric w-28",
       cell: (booking) => formatInr(booking.amountTotal),
     },
     {

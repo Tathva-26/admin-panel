@@ -133,7 +133,6 @@ export default function UsersList() {
       key: "college",
       header: "College",
       className: "text-zinc-600",
-      hideOnMobile: true,
       cell: (user) => user.college || "—",
     },
     {
@@ -194,29 +193,30 @@ export default function UsersList() {
           placeholder="Search name or email…"
         />
 
-        <Select
-          aria-label="Filter by role"
-          className="h-9 w-full sm:h-8 sm:w-36"
-          value={users.filters.role ?? ""}
-          onChange={(e) => users.setFilter("role", e.target.value)}
-        >
-          <option value="">All roles</option>
-          {ROLES.map((role) => (
-            <option key={role} value={role}>
-              {role}
-            </option>
-          ))}
-        </Select>
+        <div className="flex gap-2 sm:ml-auto sm:contents">
+          <Select
+            aria-label="Filter by role"
+            className="h-9 w-full sm:h-8 sm:w-36"
+            value={users.filters.role ?? ""}
+            onChange={(e) => users.setFilter("role", e.target.value)}
+          >
+            <option value="">All roles</option>
+            {ROLES.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </Select>
 
-        <Button
-          size="sm"
-          className="sm:ml-auto"
-          loading={csv.exporting}
-          disabled={users.total === 0}
-          onClick={csv.exportCsv}
-        >
-          Export CSV
-        </Button>
+          <Button
+            className="h-9 shrink-0 sm:ml-auto sm:h-7 sm:px-2.5 sm:text-xs"
+            loading={csv.exporting}
+            disabled={users.total === 0}
+            onClick={csv.exportCsv}
+          >
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {csv.error ? (
@@ -251,6 +251,7 @@ export default function UsersList() {
         sort={users.sort}
         order={users.order}
         onToggleSort={users.toggleSort}
+        cardsBelow="lg"
         emptyTitle="No users match"
         emptyDescription="Try clearing the search or role filter."
         footer={

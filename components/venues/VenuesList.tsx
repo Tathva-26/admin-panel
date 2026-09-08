@@ -89,6 +89,9 @@ export default function VenuesList() {
       header: "Venue",
       primary: true,
       sortKey: "name",
+      // Capped rather than left to absorb all the slack, which pushed the
+      // live column out to the far right on a wide screen.
+      className: "w-72",
       cell: (venue) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-zinc-900">{venue.name}</p>
@@ -113,7 +116,8 @@ export default function VenuesList() {
     {
       key: "count",
       header: "Events",
-      className: "numeric w-24 text-right text-zinc-600",
+      align: "center",
+      className: "numeric w-24 text-zinc-600",
       hideOnMobile: true,
       cell: (venue) => eventsFor(venue).length || "—",
     },

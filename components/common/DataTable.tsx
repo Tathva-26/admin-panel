@@ -11,8 +11,14 @@ export interface Column<T> {
   key: string;
   header: string;
   cell: (row: T) => ReactNode;
-  /** Applied to both the header and every cell — widths, alignment. */
+  /** Applied to both the header and every cell — widths, colours. */
   className?: string;
+  /**
+   * Column alignment. Set here rather than as a `text-*` class in `className`:
+   * `cn` only joins strings, so a `text-center` competing with the header's
+   * default `text-left` is resolved by stylesheet order rather than intent.
+   */
+  align?: "left" | "center" | "right";
   /**
    * On mobile this column is the card's heading rather than a labelled row.
    * Mark exactly one column per table.
@@ -47,6 +53,13 @@ interface DataTableProps<T> {
   selectable?: boolean;
   selected?: ReadonlySet<RowKey>;
   onSelectedChange?: (next: Set<RowKey>) => void;
+  /**
+   * Width at which the card layout gives way to the table. A wide, dense table
+   * needs more room before it stops being cramped, so those sections pass
+   * "lg". Written as whole class names because Tailwind cannot see a class
+   * assembled at runtime.
+   */
+  cardsBelow?: "md" | "lg";
   /** Wire these to useList to make `sortKey` columns clickable. */
   sort?: string;
   order?: "asc" | "desc";
@@ -54,6 +67,18 @@ interface DataTableProps<T> {
 }
 
 const SKELETON_ROWS = 5;
+
+const ALIGN = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+} as const;
+
+const CARDS_VISIBLE = { md: "md:hidden", lg: "lg:hidden" } as const;
+const TABLE_VISIBLE = {
+  md: "hidden md:block",
+  lg: "hidden lg:block",
+} as const;
 
 const CHECKBOX_CLASS =
   "h-4 w-4 shrink-0 cursor-pointer rounded border-zinc-300 accent-zinc-900";
@@ -80,6 +105,7 @@ export default function DataTable<T>({
   selectable = false,
   selected,
   onSelectedChange,
+  cardsBelow = "md",
   sort,
   order = "asc",
   onToggleSort,
@@ -142,7 +168,13 @@ export default function DataTable<T>({
       ) : (
         <>
           {/* Phones and small tablets: one card per row. */}
-          <ul className={cn("divide-y divide-zinc-100 md:hidden", dimWhileReloading)}>
+          <ul
+            className={cn(
+              "divide-y divide-zinc-100",
+              CARDS_VISIBLE[cardsBelow],
+              dimWhileReloading,
+            )}
+          >
             {showSkeleton
               ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
                   <li key={`skeleton-${index}`} className="space-y-2 px-4 py-3">
@@ -195,8 +227,8 @@ export default function DataTable<T>({
                 ))}
           </ul>
 
-          {/* md and up: the real table. */}
-          <div className="hidden overflow-x-auto md:block">
+          {/* Wide enough for the real table. */}
+          <div className={cn("overflow-x-auto", TABLE_VISIBLE[cardsBelow])}>
             <table className="w-full border-collapse text-sm">
               {/* Sticky so column labels survive scrolling a long list. */}
               <thead className="sticky top-0 z-10">
@@ -235,7 +267,8 @@ export default function DataTable<T>({
                             : undefined
                         }
                         className={cn(
-                          "px-4 py-2 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                          "px-4 py-2 text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                          ALIGN[column.align ?? "left"],
                           column.className,
                         )}
                       >
@@ -307,6 +340,7 @@ export default function DataTable<T>({
                             key={column.key}
                             className={cn(
                               "px-4 py-2.5 align-middle text-zinc-700",
+                              ALIGN[column.align ?? "left"],
                               column.className,
                             )}
                           >
