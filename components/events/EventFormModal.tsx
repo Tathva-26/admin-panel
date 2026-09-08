@@ -19,6 +19,7 @@ import {
   updateEvent,
 } from "@/lib/api/events";
 import { listVenues } from "@/lib/api/venues";
+import { eventTypeLabel } from "@/lib/labels";
 import {
   dateTimeInputToIso,
   isoToDateInput,
@@ -322,8 +323,8 @@ function EventFormDialog({
                   }
                 >
                   {EVENT_TYPES.map((t) => (
-                    <option key={t} value={t} className="capitalize">
-                      {t}
+                    <option key={t} value={t}>
+                      {eventTypeLabel(t)}
                     </option>
                   ))}
                 </Select>

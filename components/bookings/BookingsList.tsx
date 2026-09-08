@@ -13,6 +13,7 @@ import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { listBookings } from "@/lib/api/bookings";
 import { useList } from "@/hooks/useList";
 import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 import { asEnum, asNumber, asText } from "@/lib/params";
 import {
   BOOKING_KINDS,
@@ -116,7 +117,7 @@ export default function BookingsList() {
   const statusSplit: Segment[] = useMemo(
     () =>
       BOOKING_STATUSES.map((status) => ({
-        label: status.charAt(0) + status.slice(1).toLowerCase(),
+        label: bookingStatusLabel(status),
         value: bookings.items.filter((b) => b.status === status).length,
         tone: STATUS_TONES[status],
       })),
@@ -166,7 +167,7 @@ export default function BookingsList() {
       header: "Kind",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
-      cell: (booking) => booking.kind,
+      cell: (booking) => bookingKindLabel(booking.kind),
     },
     {
       key: "qty",
@@ -232,7 +233,7 @@ export default function BookingsList() {
             <option value="">All statuses</option>
             {BOOKING_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {bookingStatusLabel(status)}
               </option>
             ))}
           </Select>
@@ -246,7 +247,7 @@ export default function BookingsList() {
             <option value="">All kinds</option>
             {BOOKING_KINDS.map((kind) => (
               <option key={kind} value={kind}>
-                {kind}
+                {bookingKindLabel(kind)}
               </option>
             ))}
           </Select>

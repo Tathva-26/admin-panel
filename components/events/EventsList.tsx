@@ -15,6 +15,7 @@ import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { eventTypeLabel } from "@/lib/labels";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
 import { EVENT_TYPES, type AdminEvent } from "@/types";
@@ -51,7 +52,7 @@ const EXPORT_HEADERS = [
 const toExportRow = (event: AdminEvent) => [
   event.id,
   event.heading,
-  event.type,
+  eventTypeLabel(event.type),
   event.published ? "Published" : "Draft",
   event.startTime ?? event.datetime
     ? formatDateTime(event.startTime ?? event.datetime)
@@ -214,8 +215,8 @@ export default function EventsList({
     {
       key: "type",
       header: "Type",
-      className: "w-32 text-zinc-600 capitalize",
-      cell: (event) => event.type,
+      className: "w-32 text-zinc-600",
+      cell: (event) => eventTypeLabel(event.type),
     },
     {
       key: "datetime",
@@ -289,8 +290,8 @@ export default function EventsList({
           >
             <option value="">All types</option>
             {EVENT_TYPES.map((type) => (
-              <option key={type} value={type} className="capitalize">
-                {type}
+              <option key={type} value={type}>
+                {eventTypeLabel(type)}
               </option>
             ))}
           </Select>

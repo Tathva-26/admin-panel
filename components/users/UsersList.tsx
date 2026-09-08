@@ -16,6 +16,7 @@ import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
 import { listUsers, updateUserRole } from "@/lib/api/users";
 import { formatDate } from "@/lib/format";
+import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
 import { ROLES, type AdminUser, type Role } from "@/types";
 
@@ -205,7 +206,7 @@ export default function UsersList() {
             <option value="">All roles</option>
             {ROLES.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {roleLabel(role)}
               </option>
             ))}
           </Select>

@@ -10,6 +10,7 @@ import Modal from "@/components/ui/Modal";
 import { useMutation } from "@/hooks/useMutation";
 import { updateBookingStatus } from "@/lib/api/bookings";
 import { formatInr } from "@/lib/format";
+import { bookingStatusLabel } from "@/lib/labels";
 import { BOOKING_STATUSES, type Booking, type BookingStatus } from "@/types";
 
 /**
@@ -110,7 +111,7 @@ export default function BookingStatusModal({
               >
                 {BOOKING_STATUSES.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {bookingStatusLabel(option)}
                   </option>
                 ))}
               </Select>
