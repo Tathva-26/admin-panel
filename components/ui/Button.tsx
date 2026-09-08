@@ -21,6 +21,33 @@ const SIZES: Record<Size, string> = {
   md: "h-9 px-3.5 text-sm",
 };
 
+/**
+ * The button look, separated from the `<button>` element.
+ *
+ * Some actions are navigations and must render as `<a>` — a "New event" button
+ * that links to the create URL, for instance. Those need these styles without
+ * inheriting button semantics, and reimplementing them inline is how the topbar
+ * ended up with its own not-quite-matching buttons.
+ */
+export function buttonClasses({
+  variant = "secondary",
+  size = "md",
+  className,
+}: {
+  variant?: Variant;
+  size?: Size;
+  className?: string;
+} = {}): string {
+  return cn(
+    "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
+    "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
+    "disabled:cursor-not-allowed disabled:opacity-50",
+    VARIANTS[variant],
+    SIZES[size],
+    className,
+  );
+}
+
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
   size?: Size;
@@ -42,14 +69,7 @@ export default function Button({
     <button
       // A pending request should not be submittable twice.
       disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
-        "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        VARIANTS[variant],
-        SIZES[size],
-        className,
-      )}
+      className={buttonClasses({ variant, size, className })}
       {...props}
     >
       {loading ? <Spinner className="h-3.5 w-3.5" /> : null}
