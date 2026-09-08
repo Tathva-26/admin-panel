@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 
 import type { ApiError } from "@/lib/api/errors";
@@ -28,6 +28,14 @@ export interface UseListResult<T> {
   error: ApiError | null;
   /** Current filter values, for binding inputs. */
   filters: Record<string, string>;
+  /** Column currently sorted by, if any. */
+  sort?: string;
+  order: "asc" | "desc";
+  /**
+   * Sorts by a column, or flips direction when it is already the sorted one.
+   * Sorting a third time clears it and returns to the backend's own order.
+   */
+  toggleSort: (key: string) => void;
   /** Sets or clears one filter and returns to page 1. */
   setFilter: (key: string, value: string | null) => void;
   setPage: (page: number) => void;
@@ -61,7 +69,6 @@ export function useList<T>(
   fetcher: (params: ListParams) => Promise<ListResponse<T>>,
   options?: { pageSize?: number },
 ): UseListResult<T> {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -87,9 +94,19 @@ export function useList<T>(
   const replaceQuery = useCallback(
     (next: URLSearchParams) => {
       const query = next.toString();
-      router.push(query ? `${pathname}?${query}` : pathname);
+
+      // Native history rather than router.push. Only the query string changes
+      // and the page's server component does not depend on it, so a router
+      // navigation would round-trip to the server for a result identical to
+      // what is already on screen. Next syncs pushState with useSearchParams,
+      // so this hook still re-runs and the back button still works.
+      window.history.pushState(
+        null,
+        "",
+        query ? `${pathname}?${query}` : pathname,
+      );
     },
-    [pathname, router],
+    [pathname],
   );
 
   const setFilter = useCallback(
@@ -103,6 +120,30 @@ export function useList<T>(
       // of a 1-page result is the classic way to land on an empty screen.
       next.delete("page");
 
+      replaceQuery(next);
+    },
+    [queryString, replaceQuery],
+  );
+
+  const toggleSort = useCallback(
+    (key: string) => {
+      const next = new URLSearchParams(queryString);
+      const current = next.get("sort");
+      const ascending = next.get("order") !== "desc";
+
+      if (current !== key) {
+        next.set("sort", key);
+        next.set("order", "asc");
+      } else if (ascending) {
+        next.set("order", "desc");
+      } else {
+        // Third click clears it rather than cycling forever, so there is a way
+        // back to whatever order the backend returns by default.
+        next.delete("sort");
+        next.delete("order");
+      }
+
+      next.delete("page");
       replaceQuery(next);
     },
     [queryString, replaceQuery],
@@ -131,6 +172,9 @@ export function useList<T>(
     loading,
     error,
     filters,
+    sort: filters.sort,
+    order: filters.order === "desc" ? "desc" : "asc",
+    toggleSort,
     setFilter,
     setPage,
     refetch,

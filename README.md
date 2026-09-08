@@ -1,103 +1,64 @@
 # Tathva '26 Admin Panel
 
-Internal admin tool for the Tathva team. Next 16 (App Router), React 19, TypeScript, Tailwind
-v4, axios.
+Internal admin tool for the Tathva team. Manage events, venues, announcements, users and
+bookings for the fest.
 
-## Running it
+Built with Next 16 (App Router), React 19, TypeScript, Tailwind v4 and axios.
+
+## Getting started
 
 ```bash
 npm install
-cp .env.example .env.local   # point NEXT_PUBLIC_API_URL at the backend
+cp .env.example .env.local
 npm run dev
 ```
 
-`NEXT_PUBLIC_API_URL` is the backend **origin**, without `/api` — the client appends that
-itself, so paths stay as `/admin/events`.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Current state
+Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without `/api` — the API
+client appends that itself.
 
-The backend does not expose `/api/admin/*` yet, so **screens will show their error state**
-("Could not reach the server", or a `404 NOT_FOUND` if the backend is running). That is
-expected, not a bug. The request path, error parsing and every empty/error/loading state are
-real and working — only the data is missing.
+## Sections
 
-Auth is deliberately not implemented yet. `lib/api/client.ts` has a single interceptor that
-will attach the bearer token when we get to it; nothing else reads a token.
+| Section | What it does |
+| --- | --- |
+| Dashboard | Counts across events, announcements, users and bookings |
+| Events | Workshops, lectures, competitions and general events |
+| Venues | Places an event can be scheduled at, and what is on at each |
+| Announcements | Notices shown on the public site once published |
+| Users | Registered users and their roles |
+| Bookings | Event and accommodation bookings, and their payment state |
 
-## Layout
+## Project structure
 
 ```
-app/            routes — one folder per section, thin
+app/            routes, one folder per section
 components/
-  layout/       AdminShell, Sidebar, Topbar, PageHeader
-  ui/           Button, Input/Select/Textarea, Field, Badge, Card, Modal,
-                Pagination, Spinner, EmptyState, ErrorState
-  common/       DataTable, SearchInput, ConfirmDialog, StatusBadge
-hooks/          useApi, useList, useMutation
+  layout/       shell, sidebar, topbar
+  ui/           buttons, inputs, badges, modals
+  common/       data table, search, dialogs, command palette
+  <section>/    screens for one section
+hooks/          data fetching, list state, mutations
 lib/
-  api/          client.ts (axios + helpers), errors.ts, one file per resource
-  format.ts     paise ↔ rupees, ISO ↔ IST
-  params.ts     URL string → typed query value
-  nav.ts        sidebar sections
-types/          contract types, mirroring admin-panel-frontend-api.md
+  api/          axios client and one module per resource
+  format.ts     money and date formatting
+types/          API types
 ```
 
-## Adding a section
+## Scripts
 
-1. Add the resource module in `lib/api/`, using the `get` / `post` / `patch` / `del` helpers
-   from `client.ts` — don't import axios directly:
+```bash
+npm run dev      # development server
+npm run build    # production build
+npm start        # serve the production build
+npm run lint     # eslint
+```
 
-   ```ts
-   export const listVenues = (q: ListQuery) =>
-     get<ListResponse<Venue>>("/admin/venues", { ...q });
-   export const createVenue = (body: VenueInput) =>
-     post<Venue>("/admin/venues", body, "venue");
-   ```
+## API
 
-   The third argument unwraps `{ "venue": { … } }`. List endpoints return
-   `{ items, page, pageSize, total }` directly, so they don't need it.
+The panel talks to the Tathva backend over REST. Endpoint shapes are documented in
+`admin-panel-frontend-api.md`, and mirrored as types in `types/index.ts`.
 
-2. Add the section to `NAV_ITEMS` in `lib/nav.ts` — one line, no edit to `Sidebar.tsx`.
-
-3. Build the page with `useList` + `DataTable`, and forms with `useMutation` + `Field`.
-
-### What `DataTable` gives you without extra work
-
-- Loading skeletons, empty state and error state with retry.
-- A mobile card layout below `md`. Mark one column `primary` (it becomes the
-  card heading) and `hideOnMobile: true` on the ones that don't matter on a phone.
-- Row selection: pass `selectable`, `selected` and `onSelectedChange`, then put
-  your actions inside `<BulkActionBar>`. See `components/events/EventsList.tsx`
-  — it runs bulk actions with `Promise.allSettled` so one failure doesn't
-  abandon the rest, and reports which rows failed.
-- CSV export is `toCsv` + `downloadCsv` from `lib/csv.ts`. It handles quoting,
-  Excel's UTF-8 BOM, and neutralising cells that would otherwise be read as
-  spreadsheet formulas.
-
-Sections are also searchable from the ⌘K palette automatically, because it reads
-`NAV_ITEMS`.
-
-## Things worth knowing
-
-- **Money is integer paise.** Use `formatInr` / `rupeeInputToPaise` from `lib/format.ts`.
-  Never `parseFloat(x) * 100` — `4.99 * 100` is `498.99999999999994`.
-- **Dates go over the wire as ISO, and are shown in IST** regardless of the viewer's clock.
-  `isoToDateTimeInput` / `dateTimeInputToIso` handle `<input type="datetime-local">`.
-- **List state lives in the URL.** `useList` keeps page and filters in the query string, so a
-  filtered view survives a reload and can be pasted to someone else.
-- **`useSearchParams` needs a `<Suspense>` boundary** in Next 16 — wrap the client body of any
-  page using `useList`.
-- **A 422 populates `useMutation().fields`**, keyed by `details.issues[].path`. Pass the entry
-  straight to `<Field error={…}>` and validation lands beside the right input.
-- **Run `npx next typegen`** if `PageProps` / `LayoutProps` come up as unknown types; they are
-  generated, not written by hand.
-
-## Who's doing what
-
-| | Satrajit | Partner |
-| --- | --- | --- |
-| Shared layer | client, types, errors, hooks, `components/ui`, shell | — |
-| Sections | Events, Dashboard | Venues, Announcements, Users, Bookings |
-
-One owner per section — don't edit a file in the other person's section. Shared files change by
-asking, not editing, so we don't both touch the same lines.
+All requests go through `lib/api/client.ts`, which handles the base URL, auth header and
+error parsing. Resource modules in `lib/api/` use its helpers rather than importing axios
+directly.
