@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import { PublishedBadge } from "@/components/common/StatusBadge";
@@ -55,15 +55,6 @@ export default function AnnouncementsList() {
 
   const isNewParam = searchParams.get("new") === "true";
   const modalOpen = formOpen || isNewParam;
-
-  useEffect(() => {
-    const handleOpen = () => {
-      setEditingAnnouncementId(null);
-      setFormOpen(true);
-    };
-    window.addEventListener("open-create-announcement", handleOpen);
-    return () => window.removeEventListener("open-create-announcement", handleOpen);
-  }, []);
 
   const closeForm = useCallback(() => {
     setFormOpen(false);
@@ -203,18 +194,6 @@ export default function AnnouncementsList() {
           </Select>
         </div>
 
-        <div className="flex gap-2 sm:ml-auto">
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setEditingAnnouncementId(null);
-              setFormOpen(true);
-            }}
-          >
-            + New Announcement
-          </Button>
-        </div>
       </div>
 
       {outcome ? (

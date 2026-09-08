@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
@@ -42,6 +43,8 @@ export default function VenuesList() {
     }),
   );
 
+  const setVenueFilter = venues.setFilter;
+
   const schedule = useApi("venue-schedule", () =>
     listEvents({ pageSize: SCHEDULE_PAGE_SIZE }),
   );
@@ -53,8 +56,10 @@ export default function VenuesList() {
     [schedule.data],
   );
 
+  const searchParams = useSearchParams();
   const [editing, setEditing] = useState<Venue | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const isNewParam = searchParams.get("new") === "true";
   const [pendingDelete, setPendingDelete] = useState<Venue | null>(null);
   const [viewingSchedule, setViewingSchedule] = useState<Venue | null>(null);
 
@@ -64,6 +69,11 @@ export default function VenuesList() {
     setEditing(null);
     setFormOpen(true);
   };
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    if (searchParams.get("new") === "true") setVenueFilter("new", null);
+  }, [searchParams, setVenueFilter]);
 
   const openEdit = (venue: Venue) => {
     setEditing(venue);
@@ -167,14 +177,6 @@ export default function VenuesList() {
           onChange={(value) => venues.setFilter("search", value)}
           placeholder="Search venues…"
         />
-        <Button
-          size="sm"
-          variant="primary"
-          className="sm:ml-auto"
-          onClick={openCreate}
-        >
-          New venue
-        </Button>
       </div>
 
       {/* Silently showing counts drawn from a truncated fetch would be worse
@@ -225,13 +227,13 @@ export default function VenuesList() {
       />
 
       {/* Keyed so switching between rows (or create) starts from a fresh draft. */}
-      {formOpen ? (
+      {formOpen || isNewParam ? (
         <VenueFormModal
           key={editing?.id ?? "new"}
           venue={editing}
-          onClose={() => setFormOpen(false)}
+          onClose={closeForm}
           onSaved={() => {
-            setFormOpen(false);
+            closeForm();
             venues.refetch();
             schedule.refetch();
           }}

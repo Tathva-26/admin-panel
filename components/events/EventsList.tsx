@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import BulkActionBar from "@/components/common/BulkActionBar";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
@@ -97,15 +97,6 @@ export default function EventsList({
   const eventIdParam = searchParams.get("eventId");
   const targetEventId = eventIdParam ? Number(eventIdParam) : null;
   const modalOpen = formOpen || createOpen || isNewParam || !!targetEventId;
-
-  useEffect(() => {
-    const handleOpen = () => {
-      setEditingEvent(null);
-      setFormOpen(true);
-    };
-    window.addEventListener("open-create-event", handleOpen);
-    return () => window.removeEventListener("open-create-event", handleOpen);
-  }, []);
 
   const closeForm = useCallback(() => {
     setFormOpen(false);
@@ -325,16 +316,6 @@ export default function EventsList({
             onClick={csv.exportCsv}
           >
             Export CSV
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setEditingEvent(null);
-              setFormOpen(true);
-            }}
-          >
-            + New Event
           </Button>
         </div>
       </div>
