@@ -20,6 +20,13 @@ export interface Column<T> {
   primary?: boolean;
   /** Left out of the mobile card, to keep it to what matters on a phone. */
   hideOnMobile?: boolean;
+  /**
+   * Makes the header a sort control. The value is the `sort` param the backend
+   * expects, which is not always the column key.
+   */
+  sortKey?: string;
+  /** Kept in the mobile card's action row rather than the label/value grid. */
+  isActions?: boolean;
 }
 
 export type RowKey = string | number;
@@ -40,6 +47,10 @@ interface DataTableProps<T> {
   selectable?: boolean;
   selected?: ReadonlySet<RowKey>;
   onSelectedChange?: (next: Set<RowKey>) => void;
+  /** Wire these to useList to make `sortKey` columns clickable. */
+  sort?: string;
+  order?: "asc" | "desc";
+  onToggleSort?: (key: string) => void;
 }
 
 const SKELETON_ROWS = 5;
@@ -69,13 +80,18 @@ export default function DataTable<T>({
   selectable = false,
   selected,
   onSelectedChange,
+  sort,
+  order = "asc",
+  onToggleSort,
 }: DataTableProps<T>) {
   const showSkeleton = loading && rows.length === 0;
   const showEmpty = !loading && !error && rows.length === 0;
 
   const primary = columns.find((column) => column.primary) ?? columns[0];
+  const actionColumn = columns.find((column) => column.isActions);
   const secondary = columns.filter(
-    (column) => column !== primary && !column.hideOnMobile,
+    (column) =>
+      column !== primary && column !== actionColumn && !column.hideOnMobile,
   );
 
   const selectionOn = selectable && !!onSelectedChange;
@@ -163,6 +179,17 @@ export default function DataTable<T>({
                           </div>
                         ))}
                       </dl>
+
+                      {/*
+                        Actions belong on a phone too — hiding them the way an
+                        ordinary column is hidden would leave no way to edit or
+                        delete a row from a small screen.
+                      */}
+                      {actionColumn ? (
+                        <div className="mt-2 flex justify-end border-t border-zinc-100 pt-2">
+                          {actionColumn.cell(row)}
+                        </div>
+                      ) : null}
                     </div>
                   </li>
                 ))}
@@ -171,8 +198,9 @@ export default function DataTable<T>({
           {/* md and up: the real table. */}
           <div className="hidden overflow-x-auto md:block">
             <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 bg-zinc-50/80">
+              {/* Sticky so column labels survive scrolling a long list. */}
+              <thead className="sticky top-0 z-10">
+                <tr className="border-b border-zinc-200 bg-zinc-50">
                   {selectionOn ? (
                     <th scope="col" className="w-10 px-4 py-2">
                       <input
@@ -191,18 +219,52 @@ export default function DataTable<T>({
                     </th>
                   ) : null}
 
-                  {columns.map((column) => (
-                    <th
-                      key={column.key}
-                      scope="col"
-                      className={cn(
-                        "px-4 py-2 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase",
-                        column.className,
-                      )}
-                    >
-                      {column.header}
-                    </th>
-                  ))}
+                  {columns.map((column) => {
+                    const sortable = column.sortKey && onToggleSort;
+                    const active = sortable && sort === column.sortKey;
+
+                    return (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        aria-sort={
+                          active
+                            ? order === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : undefined
+                        }
+                        className={cn(
+                          "px-4 py-2 text-left text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                          column.className,
+                        )}
+                      >
+                        {sortable ? (
+                          <button
+                            type="button"
+                            onClick={() => onToggleSort(column.sortKey!)}
+                            className={cn(
+                              "-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase hover:bg-zinc-200/60",
+                              active ? "text-zinc-900" : "text-zinc-500",
+                            )}
+                          >
+                            {column.header}
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "text-[10px] leading-none",
+                                active ? "opacity-100" : "opacity-0",
+                              )}
+                            >
+                              {order === "asc" ? "▲" : "▼"}
+                            </span>
+                          </button>
+                        ) : (
+                          column.header
+                        )}
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
 

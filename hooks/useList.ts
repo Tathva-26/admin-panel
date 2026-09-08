@@ -28,6 +28,14 @@ export interface UseListResult<T> {
   error: ApiError | null;
   /** Current filter values, for binding inputs. */
   filters: Record<string, string>;
+  /** Column currently sorted by, if any. */
+  sort?: string;
+  order: "asc" | "desc";
+  /**
+   * Sorts by a column, or flips direction when it is already the sorted one.
+   * Sorting a third time clears it and returns to the backend's own order.
+   */
+  toggleSort: (key: string) => void;
   /** Sets or clears one filter and returns to page 1. */
   setFilter: (key: string, value: string | null) => void;
   setPage: (page: number) => void;
@@ -35,7 +43,7 @@ export interface UseListResult<T> {
 }
 
 /**
- * List state â€” pagination and filters â€” kept in the URL rather than component
+ * List state — pagination and filters — kept in the URL rather than component
  * state, so a filtered view survives a reload, can be pasted to someone else,
  * and the back button steps through it.
  *
@@ -51,7 +59,7 @@ export interface UseListResult<T> {
  *     }),
  *   );
  *
- * The fetcher may only read its `params` argument â€” it is re-run when the query
+ * The fetcher may only read its `params` argument — it is re-run when the query
  * string changes, not on every render.
  *
  * Uses useSearchParams, so the component calling it must sit inside a
@@ -117,6 +125,30 @@ export function useList<T>(
     [queryString, replaceQuery],
   );
 
+  const toggleSort = useCallback(
+    (key: string) => {
+      const next = new URLSearchParams(queryString);
+      const current = next.get("sort");
+      const ascending = next.get("order") !== "desc";
+
+      if (current !== key) {
+        next.set("sort", key);
+        next.set("order", "asc");
+      } else if (ascending) {
+        next.set("order", "desc");
+      } else {
+        // Third click clears it rather than cycling forever, so there is a way
+        // back to whatever order the backend returns by default.
+        next.delete("sort");
+        next.delete("order");
+      }
+
+      next.delete("page");
+      replaceQuery(next);
+    },
+    [queryString, replaceQuery],
+  );
+
   const setPage = useCallback(
     (nextPage: number) => {
       const next = new URLSearchParams(queryString);
@@ -140,6 +172,9 @@ export function useList<T>(
     loading,
     error,
     filters,
+    sort: filters.sort,
+    order: filters.order === "desc" ? "desc" : "asc",
+    toggleSort,
     setFilter,
     setPage,
     refetch,
