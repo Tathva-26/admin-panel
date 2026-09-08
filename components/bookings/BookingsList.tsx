@@ -1,24 +1,69 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import DataTable, { type Column } from "@/components/common/DataTable";
+import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
 import SearchInput from "@/components/common/SearchInput";
 import { BookingStatusBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
-import { useList } from "@/hooks/useList";
+import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { listBookings } from "@/lib/api/bookings";
-import { formatDateTime, formatInr } from "@/lib/format";
+import { useList } from "@/hooks/useList";
+import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { asEnum, asNumber, asText } from "@/lib/params";
 import {
   BOOKING_KINDS,
   BOOKING_STATUSES,
   type Booking,
+  type BookingStatus,
 } from "@/types";
 
 import BookingStatusModal from "./BookingStatusModal";
+
+/** Same colours the badges use, so the bar and the rows agree. */
+const STATUS_TONES: Record<BookingStatus, Segment["tone"]> = {
+  CONFIRMED: "green",
+  PENDING: "amber",
+  FAILED: "red",
+  CANCELLED: "neutral",
+  TIMEOUT: "neutral",
+};
+
+const EXPORT_HEADERS = [
+  "Booking",
+  "Status",
+  "Kind",
+  "User",
+  "Email",
+  "Event",
+  "Qty",
+  "Subtotal (INR)",
+  "Fee (INR)",
+  "Tax (INR)",
+  "Total (INR)",
+  "Currency",
+  "Booked",
+];
+
+const toExportRow = (booking: Booking): CsvCell[] => [
+  booking.bookingUid,
+  booking.status,
+  booking.kind,
+  booking.user.name,
+  booking.user.email,
+  booking.event?.heading ?? "",
+  booking.qty,
+  // Rupees as a plain decimal, which is what a spreadsheet can sum.
+  paiseToRupeeInput(booking.amountSubtotal),
+  paiseToRupeeInput(booking.amountFee),
+  paiseToRupeeInput(booking.amountTax),
+  paiseToRupeeInput(booking.amountTotal),
+  booking.currency,
+  formatDateTime(booking.createdAt),
+];
 
 export default function BookingsList() {
   const bookings = useList<Booking>(({ page, pageSize, filters }) =>
@@ -37,6 +82,58 @@ export default function BookingsList() {
 
   const [editing, setEditing] = useState<Booking | null>(null);
   const eventFilter = asNumber(bookings.filters.eventId);
+
+  const activeQuery = {
+    search: asText(bookings.filters.search),
+    status: asEnum(bookings.filters.status, BOOKING_STATUSES),
+    kind: asEnum(bookings.filters.kind, BOOKING_KINDS),
+    eventId: asNumber(bookings.filters.eventId),
+    sort: asText(bookings.filters.sort),
+    order: bookings.order === "desc" ? ("desc" as const) : undefined,
+  };
+
+  const fetchPage = useCallback(
+    (page: number, pageSize: number) =>
+      listBookings({ ...activeQuery, page, pageSize }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      activeQuery.search,
+      activeQuery.status,
+      activeQuery.kind,
+      activeQuery.eventId,
+      activeQuery.sort,
+      activeQuery.order,
+    ],
+  );
+
+  const csv = useCsvExport({
+    fetchPage,
+    headers: EXPORT_HEADERS,
+    toRow: toExportRow,
+    filename: "bookings",
+  });
+
+  const statusSplit: Segment[] = useMemo(
+    () =>
+      BOOKING_STATUSES.map((status) => ({
+        label: status.charAt(0) + status.slice(1).toLowerCase(),
+        value: bookings.items.filter((b) => b.status === status).length,
+        tone: STATUS_TONES[status],
+      })),
+    [bookings.items],
+  );
+
+  /**
+   * Only confirmed money is counted. Adding pending and failed together would
+   * produce a number that looks like revenue and is not.
+   */
+  const confirmedTotal = useMemo(
+    () =>
+      bookings.items
+        .filter((booking) => booking.status === "CONFIRMED")
+        .reduce((sum, booking) => sum + booking.amountTotal, 0),
+    [bookings.items],
+  );
 
   const columns: Column<Booking>[] = [
     {
@@ -152,7 +249,28 @@ export default function BookingsList() {
             ))}
           </Select>
         </div>
+
+        <Button
+          size="sm"
+          className="sm:ml-auto"
+          loading={csv.exporting}
+          disabled={bookings.total === 0}
+          onClick={csv.exportCsv}
+        >
+          Export CSV
+        </Button>
       </div>
+
+      {csv.error ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          Export failed. {csv.error.message}
+        </p>
+      ) : null}
+      {csv.truncated ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Export stopped at 2000 rows. Narrow the filters to get the rest.
+        </p>
+      ) : null}
 
       {/* Only appears when arrived at via a link; clearing it is the way out. */}
       {eventFilter !== undefined ? (
@@ -167,6 +285,17 @@ export default function BookingsList() {
             Clear
           </Button>
         </div>
+      ) : null}
+
+      {bookings.items.length > 0 ? (
+        <DistributionBar
+          segments={statusSplit}
+          trailing={
+            <span className="numeric text-xs text-zinc-500">
+              {formatInr(confirmedTotal)} confirmed &middot; this page
+            </span>
+          }
+        />
       ) : null}
 
       <DataTable
