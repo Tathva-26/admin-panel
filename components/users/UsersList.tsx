@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
+import Avatar from "@/components/common/Avatar";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
+import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
 import SearchInput from "@/components/common/SearchInput";
 import { RoleBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
+import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
 import { listUsers, updateUserRole } from "@/lib/api/users";
@@ -18,6 +21,31 @@ import { ROLES, type AdminUser, type Role } from "@/types";
 
 /** The role a user would be moved to — this panel only ever toggles. */
 const opposite = (role: Role): Role => (role === "ADMIN" ? "USER" : "ADMIN");
+
+const EXPORT_HEADERS = [
+  "ID",
+  "Name",
+  "Email",
+  "Phone",
+  "College",
+  "District",
+  "Referral",
+  "Role",
+  "Joined",
+];
+
+const toExportRow = (user: AdminUser): CsvCell[] => [
+  user.id,
+  user.name,
+  user.email,
+  // Kept as text: a leading zero on a phone number must survive the spreadsheet.
+  user.phone ?? "",
+  user.college ?? "",
+  user.district ?? "",
+  user.referral,
+  user.role,
+  formatDate(user.createdAt),
+];
 
 export default function UsersList() {
   const users = useList<AdminUser>(({ page, pageSize, filters }) =>
@@ -36,6 +64,37 @@ export default function UsersList() {
     updateUserRole(id, { role }),
   );
 
+  // Same filters as the table, so the export matches what is on screen rather
+  // than dumping the entire user list.
+  const activeQuery = {
+    search: asText(users.filters.search),
+    role: asEnum(users.filters.role, ROLES),
+    sort: asText(users.filters.sort),
+    order: users.order === "desc" ? ("desc" as const) : undefined,
+  };
+
+  const fetchPage = useCallback(
+    (page: number, pageSize: number) =>
+      listUsers({ ...activeQuery, page, pageSize }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeQuery.search, activeQuery.role, activeQuery.sort, activeQuery.order],
+  );
+
+  const csv = useCsvExport({
+    fetchPage,
+    headers: EXPORT_HEADERS,
+    toRow: toExportRow,
+    filename: "users",
+  });
+
+  const roleSplit: Segment[] = useMemo(() => {
+    const admins = users.items.filter((user) => user.role === "ADMIN").length;
+    return [
+      { label: "Admins", value: admins, tone: "blue" },
+      { label: "Users", value: users.items.length - admins, tone: "neutral" },
+    ];
+  }, [users.items]);
+
   async function confirmRoleChange() {
     if (!pending) return;
 
@@ -50,21 +109,17 @@ export default function UsersList() {
 
   const columns: Column<AdminUser>[] = [
     {
-      key: "id",
-      header: "ID",
-      className: "numeric w-16 text-zinc-400",
-      hideOnMobile: true,
-      cell: (user) => user.id,
-    },
-    {
       key: "user",
       sortKey: "name",
       header: "User",
       primary: true,
       cell: (user) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{user.name}</p>
-          <p className="truncate text-xs text-zinc-500">{user.email}</p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar name={user.name} seed={user.email} />
+          <div className="min-w-0">
+            <p className="truncate font-medium text-zinc-900">{user.name}</p>
+            <p className="truncate text-xs text-zinc-500">{user.email}</p>
+          </div>
         </div>
       ),
     },
@@ -152,7 +207,39 @@ export default function UsersList() {
             </option>
           ))}
         </Select>
+
+        <Button
+          size="sm"
+          className="sm:ml-auto"
+          loading={csv.exporting}
+          disabled={users.total === 0}
+          onClick={csv.exportCsv}
+        >
+          Export CSV
+        </Button>
       </div>
+
+      {csv.error ? (
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          Export failed. {csv.error.message}
+        </p>
+      ) : null}
+      {csv.truncated ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Export stopped at 2000 rows. Narrow the filters to get the rest.
+        </p>
+      ) : null}
+
+      {users.items.length > 0 ? (
+        <DistributionBar
+          segments={roleSplit}
+          trailing={
+            <span className="numeric text-xs text-zinc-500">
+              {users.total} total
+            </span>
+          }
+        />
+      ) : null}
 
       <DataTable
         columns={columns}
