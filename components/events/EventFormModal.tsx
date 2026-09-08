@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
@@ -11,6 +11,7 @@ import Modal from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
 import { useApi } from "@/hooks/useApi";
 import { useMutation } from "@/hooks/useMutation";
+import { apiErrorMessage } from "@/lib/api/errors";
 import {
   archiveEvent,
   createEvent,
@@ -122,6 +123,12 @@ function EventFormDialog({
   const archive = useMutation((id: number) => archiveEvent(id));
 
   const mutation = isEdit ? update : create;
+
+  useEffect(() => {
+    if (mutation.error?.status === 409) {
+      onSaved();
+    }
+  }, [mutation.error, onSaved]);
 
   const set = <K extends keyof EventInput>(key: K, value: EventInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -288,7 +295,7 @@ function EventFormDialog({
       >
         {mutation.error && mutation.error.issues.length === 0 ? (
           <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {mutation.error.message}
+            {apiErrorMessage(mutation.error)}
           </p>
         ) : null}
 

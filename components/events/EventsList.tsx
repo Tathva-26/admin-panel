@@ -12,10 +12,11 @@ import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
-import { toApiError, type ApiError } from "@/lib/api/errors";
+import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
 import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { asBool, asEnum, asText } from "@/lib/params";
+import { refreshDashboard } from "@/lib/refresh";
 import { EVENT_TYPES, type AdminEvent } from "@/types";
 
 import EventFormModal from "./EventFormModal";
@@ -80,8 +81,12 @@ export default function EventsList({
       search: asText(filters.search),
       type: asEnum(filters.type, EVENT_TYPES),
       published: asBool(filters.published),
+      sort: asText(filters.sort),
+      order: asEnum(filters.order, ["asc", "desc"]),
     }),
   );
+  const refetchEvents = events.refetch;
+  const setEventFilter = events.setFilter;
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -109,13 +114,13 @@ export default function EventsList({
     setFormOpen(false);
     setEditingEvent(null);
     if (searchParams.get("new") === "true") {
-      events.setFilter("new", null);
+      setEventFilter("new", null);
     }
     if (searchParams.get("eventId")) {
-      events.setFilter("eventId", null);
+      setEventFilter("eventId", null);
     }
     onCreateClose?.();
-  }, [events, searchParams, onCreateClose]);
+  }, [searchParams, onCreateClose, setEventFilter]);
 
   const handleEdit = useCallback((event: AdminEvent) => {
     setEditingEvent(event);
@@ -123,18 +128,20 @@ export default function EventsList({
   }, []);
 
   const handleSaved = useCallback(() => {
-    events.refetch();
-  }, [events]);
+    refetchEvents();
+    refreshDashboard();
+  }, [refetchEvents]);
 
   const handleMutated = useCallback(() => {
-    events.refetch();
-  }, [events]);
+    refetchEvents();
+    refreshDashboard();
+  }, [refetchEvents]);
 
   const handleRowError = useCallback((action: string, err: ApiError) => {
     setOutcome({
       action,
       succeeded: 0,
-      failures: [{ id: 0, message: err.message }],
+      failures: [{ id: 0, message: apiErrorMessage(err) }],
     });
   }, []);
 
@@ -142,6 +149,8 @@ export default function EventsList({
     search: asText(events.filters.search),
     type: asEnum(events.filters.type, EVENT_TYPES),
     published: asBool(events.filters.published),
+    sort: asText(events.filters.sort),
+    order: asEnum(events.filters.order, ["asc", "desc"]),
   };
 
   async function exportCsv() {
@@ -175,7 +184,7 @@ export default function EventsList({
       setOutcome({
         action: "Export",
         succeeded: 0,
-        failures: [{ id: 0, message: toApiError(error).message }],
+        failures: [{ id: 0, message: apiErrorMessage(toApiError(error)) }],
       });
     } finally {
       setExporting(false);
@@ -198,14 +207,15 @@ export default function EventsList({
 
     const failures = results.flatMap((result, index) =>
       result.status === "rejected"
-        ? [{ id: ids[index], message: toApiError(result.reason).message }]
+        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
         : [],
     );
 
     setBusy(false);
     setSelected(new Set());
     setOutcome({ action, succeeded: ids.length - failures.length, failures });
-    events.refetch();
+    refetchEvents();
+    refreshDashboard();
   }
 
   const columns: Column<AdminEvent>[] = [
@@ -309,6 +319,28 @@ export default function EventsList({
             <option value="">All states</option>
             <option value="true">Published</option>
             <option value="false">Draft</option>
+          </Select>
+
+          <Select
+            aria-label="Sort events by"
+            className="h-9 w-full sm:h-8 sm:w-40"
+            value={events.filters.sort ?? ""}
+            onChange={(e) => events.setFilter("sort", e.target.value)}
+          >
+            <option value="">Sort by</option>
+            <option value="datetime">Start date</option>
+            <option value="heading">Event name</option>
+            <option value="createdAt">Created date</option>
+          </Select>
+
+          <Select
+            aria-label="Sort order"
+            className="h-9 w-full sm:h-8 sm:w-36"
+            value={events.filters.order ?? "asc"}
+            onChange={(e) => events.setFilter("order", e.target.value)}
+          >
+            <option value="asc">Ascending</option>
+            <option value="desc">Descending</option>
           </Select>
         </div>
 

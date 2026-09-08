@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import Spinner from "@/components/ui/Spinner";
@@ -10,8 +10,12 @@ function CallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { verifySession } = useAuth();
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
     const processCallback = async () => {
       const token = searchParams.get("token");
 

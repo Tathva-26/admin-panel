@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 
 import ErrorState from "@/components/ui/ErrorState";
@@ -10,6 +10,7 @@ import { getDashboard } from "@/lib/api/dashboard";
 import { listEvents } from "@/lib/api/events";
 import { listAnnouncements } from "@/lib/api/announcements";
 import { findEventIssues } from "@/lib/attention";
+import { DASHBOARD_REFRESH_EVENT } from "@/lib/refresh";
 import type {
   AdminEvent,
   Announcement,
@@ -44,6 +45,23 @@ export default function DashboardView() {
     "dashboard:bookings",
     () => get<ListResponse<Booking>>("/admin/bookings", { pageSize: 3 }),
   );
+
+  const refetchStats = stats.refetch;
+  const refetchEvents = events.refetch;
+  const refetchAttentionEvents = attentionEvents.refetch;
+  const refetchAnnouncements = announcements.refetch;
+
+  useEffect(() => {
+    const refresh = () => {
+      refetchStats();
+      refetchEvents();
+      refetchAttentionEvents();
+      refetchAnnouncements();
+    };
+
+    window.addEventListener(DASHBOARD_REFRESH_EVENT, refresh);
+    return () => window.removeEventListener(DASHBOARD_REFRESH_EVENT, refresh);
+  }, [refetchStats, refetchEvents, refetchAttentionEvents, refetchAnnouncements]);
 
   const issues = useMemo(
     () => findEventIssues(attentionEvents.data?.items ?? []),

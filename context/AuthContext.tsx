@@ -4,10 +4,11 @@ import {
   createContext,
   useContext,
   useEffect,
+  useCallback,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
-import { usePathname } from "next/navigation";
 
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
 import { toApiError, type ApiError } from "@/lib/api/errors";
@@ -29,9 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ApiError | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
-  const pathname = usePathname();
+  const initialVerificationStarted = useRef(false);
 
-  const verifySession = async () => {
+  const verifySession = useCallback(async () => {
     if (typeof window === "undefined") return;
     const token = window.localStorage.getItem("jwt");
 
@@ -73,11 +74,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    verifySession();
-  }, [pathname]);
+    if (initialVerificationStarted.current) return;
+    initialVerificationStarted.current = true;
+    void Promise.resolve().then(verifySession);
+  }, [verifySession]);
 
   const logout = () => {
     setUser(null);

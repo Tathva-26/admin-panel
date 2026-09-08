@@ -109,6 +109,12 @@ export function fieldErrors(error: ApiError | null): Record<string, string> {
   return map;
 }
 
+export function apiErrorMessage(error: ApiError): string {
+  return error.retryAfter
+    ? `${error.message} Try again in ${error.retryAfter}s.`
+    : error.message;
+}
+
 /** True when retrying the same request unchanged might succeed. */
 export function isRetryable(error: ApiError): boolean {
   return error.status === 0 || error.status === 429 || error.status >= 500;

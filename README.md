@@ -6,9 +6,7 @@ This frontend currently includes three admin features:
 * **Needs Attention**
 * **Announcements**
 
-These features are implemented on the frontend and are designed to communicate with the real backend through the API client and resource modules under `lib/api/`.
-
-> **Important:** The `app/api/` directory was only created as a temporary local mock API for frontend development. It is not the production backend and should be removed before connecting the frontend to the real backend. The real backend must implement the API described by the project's API contract.
+These features are implemented on the frontend and communicate with the real backend through the API client and resource modules under `lib/api/`.
 
 ---
 
@@ -257,8 +255,6 @@ Backend validation errors should provide enough information for the frontend to 
 
 Events and Announcements are admin features and must ultimately be protected by the real backend.
 
-The frontend should not treat the temporary mock API as production authentication or authorization.
-
 The backend must determine whether the authenticated user has the required admin role.
 
 The frontend should handle authentication/authorization responses according to the API contract, including:
@@ -272,31 +268,6 @@ The frontend should handle authentication/authorization responses according to t
 * `500` — server error
 
 ---
-
-## Temporary Mock API
-
-The repository previously contained:
-
-```text
-app/api/
-```
-
-This directory was created only for local frontend development and testing.
-
-It is **not the real backend**.
-
-The mock API:
-
-* Stores event and announcement data in memory
-* Supports local create/update/publish/unpublish/delete operations
-* Resets when the server process reloads
-* Contains test data designed to exercise Needs Attention
-* Does not provide production database persistence
-* Does not provide production-level authentication/authorization
-
-Before connecting this frontend to the real backend, remove the temporary `app/api/` mock implementation.
-
-Do **not** remove the real API integration modules under `lib/api/`.
 
 The intended production architecture is:
 

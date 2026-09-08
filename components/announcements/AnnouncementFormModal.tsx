@@ -10,6 +10,7 @@ import Modal from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
 import { useApi } from "@/hooks/useApi";
 import { useMutation } from "@/hooks/useMutation";
+import { apiErrorMessage } from "@/lib/api/errors";
 import {
   createAnnouncement,
   getAnnouncement,
@@ -140,7 +141,7 @@ function AnnouncementFormDialog({
     >
       {mutation.error && mutation.error.issues.length === 0 ? (
         <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {mutation.error.message}
+          {apiErrorMessage(mutation.error)}
         </p>
       ) : null}
 

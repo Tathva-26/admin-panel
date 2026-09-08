@@ -14,9 +14,10 @@ import {
   publishAnnouncement,
   unpublishAnnouncement,
 } from "@/lib/api/announcements";
-import { toApiError, type ApiError } from "@/lib/api/errors";
+import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
 import { asBool } from "@/lib/params";
+import { refreshDashboard } from "@/lib/refresh";
 import type { Announcement } from "@/types";
 
 import AnnouncementFormModal from "./AnnouncementFormModal";
@@ -38,6 +39,8 @@ export default function AnnouncementsList() {
       published: asBool(filters.published),
     }),
   );
+  const refetchAnnouncements = announcements.refetch;
+  const setAnnouncementFilter = announcements.setFilter;
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -64,9 +67,9 @@ export default function AnnouncementsList() {
     setFormOpen(false);
     setEditingAnnouncementId(null);
     if (searchParams.get("new") === "true") {
-      announcements.setFilter("new", null);
+      setAnnouncementFilter("new", null);
     }
-  }, [announcements, searchParams]);
+  }, [searchParams, setAnnouncementFilter]);
 
   const handleEdit = useCallback((announcement: Announcement) => {
     setEditingAnnouncementId(announcement.id);
@@ -74,18 +77,20 @@ export default function AnnouncementsList() {
   }, []);
 
   const handleSaved = useCallback(() => {
-    announcements.refetch();
-  }, [announcements]);
+    refetchAnnouncements();
+    refreshDashboard();
+  }, [refetchAnnouncements]);
 
   const handleMutated = useCallback(() => {
-    announcements.refetch();
-  }, [announcements]);
+    refetchAnnouncements();
+    refreshDashboard();
+  }, [refetchAnnouncements]);
 
   const handleRowError = useCallback((action: string, err: ApiError) => {
     setOutcome({
       action,
       succeeded: 0,
-      failures: [{ id: 0, message: err.message }],
+      failures: [{ id: 0, message: apiErrorMessage(err) }],
     });
   }, []);
 
@@ -105,14 +110,15 @@ export default function AnnouncementsList() {
 
     const failures = results.flatMap((result, index) =>
       result.status === "rejected"
-        ? [{ id: ids[index], message: toApiError(result.reason).message }]
+        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
         : [],
     );
 
     setBusy(false);
     setSelected(new Set());
     setOutcome({ action, succeeded: ids.length - failures.length, failures });
-    announcements.refetch();
+    refetchAnnouncements();
+    refreshDashboard();
   }
 
   const columns: Column<Announcement>[] = [
