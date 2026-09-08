@@ -1,103 +1,332 @@
-# Tathva '26 Admin Panel
+## Admin Features
 
-Internal admin tool for the Tathva team. Next 16 (App Router), React 19, TypeScript, Tailwind
-v4, axios.
+This frontend currently includes three admin features:
 
-## Running it
+* **Events**
+* **Needs Attention**
+* **Announcements**
 
-```bash
-npm install
-cp .env.example .env.local   # point NEXT_PUBLIC_API_URL at the backend
-npm run dev
+These features are implemented on the frontend and are designed to communicate with the real backend through the API client and resource modules under `lib/api/`.
+
+> **Important:** The `app/api/` directory was only created as a temporary local mock API for frontend development. It is not the production backend and should be removed before connecting the frontend to the real backend. The real backend must implement the API described by the project's API contract.
+
+---
+
+## Events
+
+The Events page provides the main event-management workflow for administrators.
+
+### Implemented
+
+* Paginated event list
+* Search by heading, description, or committee
+* Filter by event type
+* Filter by published/draft state
+* Create events
+* Edit events
+* Publish events
+* Unpublish events
+* Archive events
+* Row-level actions
+* Bulk publish/unpublish
+* CSV export
+* Venue selection
+* Team-event configuration
+* Capacity
+* Price
+* Ticket ID
+* Committee
+* Event description and catchy paragraph
+* Picture URL
+* Date, start time, and end time
+* Publish-immediately option
+* Loading, empty, retry, and error states
+* Field-level API validation errors
+
+### Event data
+
+Prices are handled as integer **paise** at the API boundary.
+
+Dates entered through the event form are interpreted as **IST** and sent to the API as ISO timestamps. Event dates are displayed in IST.
+
+When editing an event, the frontend sends only the fields that have changed.
+
+### Event actions
+
+The available row actions are:
+
+* Edit
+* Publish / Unpublish
+* Archive
+
+Archiving uses the event `DELETE` endpoint. The frontend treats this operation as an archive rather than assuming that the backend permanently deletes the event.
+
+### Backend endpoints
+
+The real backend is expected to provide:
+
+```text
+GET    /api/admin/events
+GET    /api/admin/events/:id
+POST   /api/admin/events
+PATCH  /api/admin/events/:id
+POST   /api/admin/events/:id/publish
+POST   /api/admin/events/:id/unpublish
+DELETE /api/admin/events/:id
+
+GET    /api/admin/venues
 ```
 
-`NEXT_PUBLIC_API_URL` is the backend **origin**, without `/api` — the client appends that
-itself, so paths stay as `/admin/events`.
+The backend remains responsible for authoritative validation and business rules, including:
 
-## Current state
+* Team-event requirements
+* Date consistency
+* Capacity
+* Price
+* Publishability
+* Registration behavior
+* Ticket behavior
+* Venue rules
 
-The backend does not expose `/api/admin/*` yet, so **screens will show their error state**
-("Could not reach the server", or a `404 NOT_FOUND` if the backend is running). That is
-expected, not a bug. The request path, error parsing and every empty/error/loading state are
-real and working — only the data is missing.
+### Current limitations
 
-Auth is deliberately not implemented yet. `lib/api/client.ts` has a single interceptor that
-will attach the bearer token when we get to it; nothing else reads a token.
+The current frontend does not provide an Events sorting control.
 
-## Layout
+The frontend also does not currently validate that the end time occurs after the start time. Some event validation is intentionally left to the backend.
 
+---
+
+## Needs Attention
+
+Needs Attention is a dashboard feature that identifies events that may require administrator review.
+
+It is **frontend-computed**. There is currently no separate backend Needs Attention endpoint.
+
+### Current checks
+
+The dashboard currently checks for:
+
+1. **Published event without a venue**
+2. **Published event without a start time**
+3. **Team event with a team size below 2**
+4. **Draft event whose start time has already passed**
+5. **Published event that is full**
+
+Warnings are shown before informational items.
+
+### Check action
+
+Each item has a single:
+
+**Check**
+
+action.
+
+Check opens the specific event in the Events editor so the administrator can inspect and decide what to do.
+
+Check does **not** automatically:
+
+* Fix the event
+* Publish the event
+* Unpublish the event
+* Archive the event
+* Change any event data
+* Mark the issue as resolved
+
+The administrator remains responsible for making any required correction through the normal Events workflow.
+
+### Current limitation
+
+Needs Attention currently examines the first **100 events** returned by the Events API.
+
+There is no pagination loop, backend issue tracking, or resolution state.
+
+The rules are defined in the frontend and can be found in:
+
+```text
+lib/attention.ts
 ```
-app/            routes — one folder per section, thin
-components/
-  layout/       AdminShell, Sidebar, Topbar, PageHeader
-  ui/           Button, Input/Select/Textarea, Field, Badge, Card, Modal,
-                Pagination, Spinner, EmptyState, ErrorState
-  common/       DataTable, SearchInput, ConfirmDialog, StatusBadge
-hooks/          useApi, useList, useMutation
-lib/
-  api/          client.ts (axios + helpers), errors.ts, one file per resource
-  format.ts     paise ↔ rupees, ISO ↔ IST
-  params.ts     URL string → typed query value
-  nav.ts        sidebar sections
-types/          contract types, mirroring admin-panel-frontend-api.md
+
+If new attention rules are added or existing rules are changed, update this file and update the documentation accordingly.
+
+---
+
+## Announcements
+
+The Announcements page provides administrators with announcement management.
+
+### Implemented
+
+* Paginated announcement list
+* Published/draft filtering
+* Create announcement
+* Edit announcement
+* Publish announcement
+* Unpublish announcement
+* Delete announcement
+* Row-level actions
+* Bulk publish/unpublish
+* Title and content fields
+* Publish-immediately option
+* Field-level API validation errors
+* Loading states
+* Empty states
+* Retryable error states
+* Mutation feedback
+
+When editing an announcement, the frontend sends only the fields that have changed.
+
+### Backend endpoints
+
+The real backend is expected to provide:
+
+```text
+GET    /api/admin/announcements
+GET    /api/admin/announcements/:id
+POST   /api/admin/announcements
+PATCH  /api/admin/announcements/:id
+POST   /api/admin/announcements/:id/publish
+POST   /api/admin/announcements/:id/unpublish
+DELETE /api/admin/announcements/:id
 ```
 
-## Adding a section
+### Current limitations
 
-1. Add the resource module in `lib/api/`, using the `get` / `post` / `patch` / `del` helpers
-   from `client.ts` — don't import axios directly:
+The current Announcements UI does not expose a search control.
 
-   ```ts
-   export const listVenues = (q: ListQuery) =>
-     get<ListResponse<Venue>>("/admin/venues", { ...q });
-   export const createVenue = (body: VenueInput) =>
-     post<Venue>("/admin/venues", body, "venue");
-   ```
+The current Announcements UI also does not expose sorting controls.
 
-   The third argument unwraps `{ "venue": { … } }`. List endpoints return
-   `{ items, page, pageSize, total }` directly, so they don't need it.
+The frontend treats announcement deletion as a permanent delete operation. The backend implementation should therefore match the expected API semantics.
 
-2. Add the section to `NAV_ITEMS` in `lib/nav.ts` — one line, no edit to `Sidebar.tsx`.
+---
 
-3. Build the page with `useList` + `DataTable`, and forms with `useMutation` + `Field`.
+## Frontend ↔ Backend Integration
 
-### What `DataTable` gives you without extra work
+The feature code is separated from the API layer.
 
-- Loading skeletons, empty state and error state with retry.
-- A mobile card layout below `md`. Mark one column `primary` (it becomes the
-  card heading) and `hideOnMobile: true` on the ones that don't matter on a phone.
-- Row selection: pass `selectable`, `selected` and `onSelectedChange`, then put
-  your actions inside `<BulkActionBar>`. See `components/events/EventsList.tsx`
-  — it runs bulk actions with `Promise.allSettled` so one failure doesn't
-  abandon the rest, and reports which rows failed.
-- CSV export is `toCsv` + `downloadCsv` from `lib/csv.ts`. It handles quoting,
-  Excel's UTF-8 BOM, and neutralising cells that would otherwise be read as
-  spreadsheet formulas.
+Resource-specific API requests should remain in:
 
-Sections are also searchable from the ⌘K palette automatically, because it reads
-`NAV_ITEMS`.
+```text
+lib/api/
+```
 
-## Things worth knowing
+The main feature areas currently use:
 
-- **Money is integer paise.** Use `formatInr` / `rupeeInputToPaise` from `lib/format.ts`.
-  Never `parseFloat(x) * 100` — `4.99 * 100` is `498.99999999999994`.
-- **Dates go over the wire as ISO, and are shown in IST** regardless of the viewer's clock.
-  `isoToDateTimeInput` / `dateTimeInputToIso` handle `<input type="datetime-local">`.
-- **List state lives in the URL.** `useList` keeps page and filters in the query string, so a
-  filtered view survives a reload and can be pasted to someone else.
-- **`useSearchParams` needs a `<Suspense>` boundary** in Next 16 — wrap the client body of any
-  page using `useList`.
-- **A 422 populates `useMutation().fields`**, keyed by `details.issues[].path`. Pass the entry
-  straight to `<Field error={…}>` and validation lands beside the right input.
-- **Run `npx next typegen`** if `PageProps` / `LayoutProps` come up as unknown types; they are
-  generated, not written by hand.
+```text
+lib/api/events.ts
+lib/api/venues.ts
+lib/api/announcements.ts
+```
 
-## Who's doing what
+The shared API client is responsible for communicating with the backend.
 
-| | Satrajit | Partner |
-| --- | --- | --- |
-| Shared layer | client, types, errors, hooks, `components/ui`, shell | — |
-| Sections | Events, Dashboard | Venues, Announcements, Users, Bookings |
+The real backend must provide the endpoints expected by these modules and return the response structures defined by the project's API contract.
 
-One owner per section — don't edit a file in the other person's section. Shared files change by
-asking, not editing, so we don't both touch the same lines.
+For list responses, the frontend expects the standard pagination structure:
+
+```text
+{
+  items,
+  page,
+  pageSize,
+  total
+}
+```
+
+Resource responses should follow the documented response wrappers, such as:
+
+```text
+{
+  event: ...
+}
+```
+
+and
+
+```text
+{
+  announcement: ...
+}
+```
+
+Backend validation errors should provide enough information for the frontend to associate field errors with the appropriate form fields.
+
+---
+
+## Authentication
+
+Events and Announcements are admin features and must ultimately be protected by the real backend.
+
+The frontend should not treat the temporary mock API as production authentication or authorization.
+
+The backend must determine whether the authenticated user has the required admin role.
+
+The frontend should handle authentication/authorization responses according to the API contract, including:
+
+* `401` — invalid or expired authentication
+* `403` — authenticated but not authorized as an admin
+* `404` — requested resource does not exist
+* `409` — resource conflict
+* `422` — validation/business-rule error
+* `429` — rate limited
+* `500` — server error
+
+---
+
+## Temporary Mock API
+
+The repository previously contained:
+
+```text
+app/api/
+```
+
+This directory was created only for local frontend development and testing.
+
+It is **not the real backend**.
+
+The mock API:
+
+* Stores event and announcement data in memory
+* Supports local create/update/publish/unpublish/delete operations
+* Resets when the server process reloads
+* Contains test data designed to exercise Needs Attention
+* Does not provide production database persistence
+* Does not provide production-level authentication/authorization
+
+Before connecting this frontend to the real backend, remove the temporary `app/api/` mock implementation.
+
+Do **not** remove the real API integration modules under `lib/api/`.
+
+The intended production architecture is:
+
+```text
+Admin UI
+   ↓
+lib/api/*
+   ↓
+Shared API client
+   ↓
+Real Backend API
+   ↓
+Database
+```
+
+---
+
+## Important Maintenance Notes
+
+When extending these features:
+
+* Keep API requests inside the appropriate `lib/api/` resource module.
+* Follow the existing shared API client and error-handling patterns.
+* Keep money values in integer paise at the API boundary.
+* Keep API dates in the format expected by the backend contract.
+* Preserve the standard pagination response shape.
+* Preserve partial-update behavior for `PATCH` requests.
+* Keep publish/unpublish as explicit backend actions.
+* Do not make Needs Attention automatically modify event data.
+* Update `lib/attention.ts` when adding or changing attention rules.
+* Update this README when the actual UI behavior changes.
+
+The API contract remains the source of truth for the frontend/backend boundary.
