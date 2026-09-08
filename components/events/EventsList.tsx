@@ -10,11 +10,11 @@ import { PublishedBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
+import { useCsvExport } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
-import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
-import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
 import { EVENT_TYPES, type AdminEvent } from "@/types";
@@ -65,8 +65,6 @@ const toExportRow = (event: AdminEvent) => [
   event.teamSize ?? "",
 ];
 
-const EXPORT_PAGE_SIZE = 100;
-const EXPORT_MAX_ROWS = 2000;
 
 export default function EventsList({
   createOpen = false,
@@ -90,7 +88,6 @@ export default function EventsList({
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -153,43 +150,26 @@ export default function EventsList({
     order: asEnum(events.filters.order, ["asc", "desc"]),
   };
 
-  async function exportCsv() {
-    setExporting(true);
-    setOutcome(null);
+  // The paging loop, the row cap and the failure handling live in the hook —
+  // they were identical to the ones in users and bookings.
+  const fetchExportPage = useCallback(
+    (page: number, pageSize: number) => listEvents({ ...activeQuery, page, pageSize }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      activeQuery.search,
+      activeQuery.type,
+      activeQuery.published,
+      activeQuery.sort,
+      activeQuery.order,
+    ],
+  );
 
-    try {
-      const rows: AdminEvent[] = [];
-      let page = 1;
-      let total = Number.POSITIVE_INFINITY;
-
-      while (rows.length < Math.min(total, EXPORT_MAX_ROWS)) {
-        const result = await listEvents({
-          ...activeQuery,
-          page,
-          pageSize: EXPORT_PAGE_SIZE,
-        });
-
-        total = result.total;
-        if (result.items.length === 0) break;
-
-        rows.push(...result.items);
-        page += 1;
-      }
-
-      downloadCsv(
-        timestampedFilename("events"),
-        toCsv(EXPORT_HEADERS, rows.map(toExportRow)),
-      );
-    } catch (error) {
-      setOutcome({
-        action: "Export",
-        succeeded: 0,
-        failures: [{ id: 0, message: apiErrorMessage(toApiError(error)) }],
-      });
-    } finally {
-      setExporting(false);
-    }
-  }
+  const csv = useCsvExport({
+    fetchPage: fetchExportPage,
+    headers: EXPORT_HEADERS,
+    toRow: toExportRow,
+    filename: "events",
+  });
 
   const targets = events.items.filter((event) => selected.has(event.id));
 
@@ -230,6 +210,7 @@ export default function EventsList({
       key: "heading",
       header: "Event",
       primary: true,
+      sortKey: "heading",
       cell: (event) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-zinc-900">{event.heading}</p>
@@ -248,21 +229,32 @@ export default function EventsList({
     {
       key: "datetime",
       header: "Starts",
+      sortKey: "datetime",
       className: "numeric w-48 text-zinc-600",
       cell: (event) => formatDateTime(event.startTime ?? event.datetime),
     },
     {
       key: "price",
       header: "Price",
-      className: "numeric w-28 text-right",
+      align: "right",
+      className: "numeric w-28",
       cell: (event) => formatInr(event.price),
     },
     {
       key: "capacity",
       header: "Capacity",
-      className: "numeric w-24 text-right text-zinc-600",
+      align: "right",
+      className: "numeric w-24 text-zinc-600",
       hideOnMobile: true,
       cell: (event) => event.capacity ?? "—",
+    },
+    {
+      key: "createdAt",
+      header: "Created",
+      sortKey: "createdAt",
+      className: "numeric w-32 text-zinc-500",
+      hideOnMobile: true,
+      cell: (event) => formatDate(event.createdAt),
     },
     {
       key: "published",
@@ -274,7 +266,9 @@ export default function EventsList({
       key: "actions",
       header: "",
       className: "w-12",
-      hideOnMobile: true,
+      // isActions, not hideOnMobile: hiding it the way an ordinary column is
+      // hidden left no way to act on a row from a phone at all.
+      isActions: true,
       cell: (event) => (
         <EventRowActions
           event={event}
@@ -321,35 +315,14 @@ export default function EventsList({
             <option value="false">Draft</option>
           </Select>
 
-          <Select
-            aria-label="Sort events by"
-            className="h-9 w-full sm:h-8 sm:w-40"
-            value={events.filters.sort ?? ""}
-            onChange={(e) => events.setFilter("sort", e.target.value)}
-          >
-            <option value="">Sort by</option>
-            <option value="datetime">Start date</option>
-            <option value="heading">Event name</option>
-            <option value="createdAt">Created date</option>
-          </Select>
-
-          <Select
-            aria-label="Sort order"
-            className="h-9 w-full sm:h-8 sm:w-36"
-            value={events.filters.order ?? "asc"}
-            onChange={(e) => events.setFilter("order", e.target.value)}
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </Select>
         </div>
 
         <div className="flex gap-2 sm:ml-auto">
           <Button
             size="sm"
-            loading={exporting}
+            loading={csv.exporting}
             disabled={events.total === 0}
-            onClick={exportCsv}
+            onClick={csv.exportCsv}
           >
             Export CSV
           </Button>
@@ -400,6 +373,9 @@ export default function EventsList({
         loading={events.loading}
         error={events.error}
         onRetry={events.refetch}
+        sort={events.sort}
+        order={events.order}
+        onToggleSort={events.toggleSort}
         selectable
         selected={selected}
         onSelectedChange={setSelected}

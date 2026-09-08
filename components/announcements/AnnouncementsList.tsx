@@ -16,7 +16,7 @@ import {
 } from "@/lib/api/announcements";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
-import { asBool } from "@/lib/params";
+import { asBool, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
 import type { Announcement } from "@/types";
 
@@ -37,6 +37,8 @@ export default function AnnouncementsList() {
       page,
       pageSize,
       published: asBool(filters.published),
+      sort: asText(filters.sort),
+      order: filters.order === "desc" ? "desc" : undefined,
     }),
   );
   const refetchAnnouncements = announcements.refetch;
@@ -131,6 +133,7 @@ export default function AnnouncementsList() {
     },
     {
       key: "title",
+      sortKey: "title",
       header: "Title",
       primary: true,
       cell: (a) => (
@@ -150,6 +153,7 @@ export default function AnnouncementsList() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "Created",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
@@ -157,6 +161,7 @@ export default function AnnouncementsList() {
     },
     {
       key: "updatedAt",
+      sortKey: "updatedAt",
       header: "Updated",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
@@ -166,7 +171,9 @@ export default function AnnouncementsList() {
       key: "actions",
       header: "",
       className: "w-12",
-      hideOnMobile: true,
+      // isActions, not hideOnMobile: hiding it the way an ordinary column is
+      // hidden left no way to act on a row from a phone at all.
+      isActions: true,
       cell: (a) => (
         <AnnouncementRowActions
           announcement={a}
@@ -244,6 +251,9 @@ export default function AnnouncementsList() {
         loading={announcements.loading}
         error={announcements.error}
         onRetry={announcements.refetch}
+        sort={announcements.sort}
+        order={announcements.order}
+        onToggleSort={announcements.toggleSort}
         selectable
         selected={selected}
         onSelectedChange={setSelected}
