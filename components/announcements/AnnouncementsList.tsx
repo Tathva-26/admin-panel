@@ -16,9 +16,9 @@ import {
 } from "@/lib/api/announcements";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
-import { asBool, asText } from "@/lib/params";
+import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import type { Announcement } from "@/types";
+import { ORDERS, type Announcement } from "@/types";
 
 import AnnouncementFormModal from "./AnnouncementFormModal";
 import AnnouncementRowActions from "./AnnouncementRowActions";
@@ -38,7 +38,7 @@ export default function AnnouncementsList() {
       pageSize,
       published: asBool(filters.published),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
   const refetchAnnouncements = announcements.refetch;

@@ -18,7 +18,7 @@ import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/
 import { eventTypeLabel } from "@/lib/labels";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import { EVENT_TYPES, type AdminEvent } from "@/types";
+import { EVENT_TYPES, ORDERS, type AdminEvent } from "@/types";
 
 import EventFormModal from "./EventFormModal";
 import EventRowActions from "./EventRowActions";
@@ -81,7 +81,7 @@ export default function EventsList({
       type: asEnum(filters.type, EVENT_TYPES),
       published: asBool(filters.published),
       sort: asText(filters.sort),
-      order: asEnum(filters.order, ["asc", "desc"]),
+      order: asEnum(filters.order, ORDERS),
     }),
   );
   const refetchEvents = events.refetch;
@@ -139,25 +139,12 @@ export default function EventsList({
     type: asEnum(events.filters.type, EVENT_TYPES),
     published: asBool(events.filters.published),
     sort: asText(events.filters.sort),
-    order: asEnum(events.filters.order, ["asc", "desc"]),
+    order: asEnum(events.filters.order, ORDERS),
   };
 
-  // The paging loop, the row cap and the failure handling live in the hook —
-  // they were identical to the ones in users and bookings.
-  const fetchExportPage = useCallback(
-    (page: number, pageSize: number) => listEvents({ ...activeQuery, page, pageSize }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeQuery.search,
-      activeQuery.type,
-      activeQuery.published,
-      activeQuery.sort,
-      activeQuery.order,
-    ],
-  );
 
   const csv = useCsvExport({
-    fetchPage: fetchExportPage,
+    fetchPage: (page, pageSize) => listEvents({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "events",

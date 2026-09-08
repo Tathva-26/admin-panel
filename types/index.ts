@@ -45,12 +45,16 @@ export interface ApiErrorBody {
  * aliases get an implicit index signature, which is what lets them be passed
  * straight to the client's `QueryParams`.
  */
+export const ORDERS = ["asc", "desc"] as const;
+
+export type SortOrder = (typeof ORDERS)[number];
+
 export type ListQuery = {
   page?: number;
   pageSize?: number;
   search?: string;
   sort?: string;
-  order?: "asc" | "desc";
+  order?: SortOrder;
 };
 
 /* ------------------------------------------------------------------ */

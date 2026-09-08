@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import DataTable, { type Column } from "@/components/common/DataTable";
 import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
@@ -18,6 +18,7 @@ import { asEnum, asNumber, asText } from "@/lib/params";
 import {
   BOOKING_KINDS,
   BOOKING_STATUSES,
+  ORDERS,
   type Booking,
   type BookingStatus,
 } from "@/types";
@@ -77,7 +78,7 @@ export default function BookingsList() {
       // Not exposed as an input — it comes from linking in from an event.
       eventId: asNumber(filters.eventId),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
 
@@ -90,25 +91,13 @@ export default function BookingsList() {
     kind: asEnum(bookings.filters.kind, BOOKING_KINDS),
     eventId: asNumber(bookings.filters.eventId),
     sort: asText(bookings.filters.sort),
-    order: bookings.order === "desc" ? ("desc" as const) : undefined,
+    order: asEnum(bookings.filters.order, ORDERS),
   };
 
-  const fetchPage = useCallback(
-    (page: number, pageSize: number) =>
-      listBookings({ ...activeQuery, page, pageSize }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeQuery.search,
-      activeQuery.status,
-      activeQuery.kind,
-      activeQuery.eventId,
-      activeQuery.sort,
-      activeQuery.order,
-    ],
-  );
 
   const csv = useCsvExport({
-    fetchPage,
+    fetchPage: (page, pageSize) =>
+      listBookings({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "bookings",

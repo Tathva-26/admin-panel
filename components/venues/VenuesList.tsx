@@ -14,9 +14,9 @@ import { useMutation } from "@/hooks/useMutation";
 import { useNow } from "@/hooks/useNow";
 import { listEvents } from "@/lib/api/events";
 import { deleteVenue, listVenues } from "@/lib/api/venues";
-import { asText } from "@/lib/params";
+import { asEnum, asText } from "@/lib/params";
 import { groupByVenue } from "@/lib/schedule";
-import type { AdminEvent, Venue } from "@/types";
+import { ORDERS, type AdminEvent, Venue } from "@/types";
 
 import VenueActivityCell from "./VenueActivityCell";
 import VenueFormModal from "./VenueFormModal";
@@ -39,7 +39,7 @@ export default function VenuesList() {
       pageSize,
       search: asText(filters.search),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
 
