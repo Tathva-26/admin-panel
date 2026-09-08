@@ -226,9 +226,6 @@ export default function DashboardView() {
                 <h2 className="text-sm font-bold text-zinc-900">
                   Announcements
                 </h2>
-                <button className="text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest p-1">
-                  •••
-                </button>
               </div>
 
               {announcementsList.length === 0 ? (
@@ -273,7 +270,6 @@ export default function DashboardView() {
                   Your Pending Bookings
                 </h2>
                 <button className="text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest p-1">
-                  •••
                 </button>
               </div>
 
@@ -338,64 +334,42 @@ export default function DashboardView() {
             onRetry={attentionEvents.refetch}
             checked={attentionEvents.data?.items.length ?? 0}
           />
-
-          {/* 2. Ticket Selling / Metrics Panel */}
+          {/* 2. Ticket Selling Panel */}
           <div className="bg-white rounded-md p-5 border border-zinc-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
-              <h2 className="text-sm font-bold text-zinc-900">
-                Ticket Selling
-              </h2>
-              <button className="text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest p-1">
-                •••
-              </button>
-            </div>
+            <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-3">
+              Ticket Selling
+            </h2>
 
-            {/* Restrained sparkline chart */}
-            <div className="h-28 w-full pt-1">
-              <svg viewBox="0 0 300 100" className="w-full h-full overflow-visible">
-                <path
-                  d="M0,80 Q30,40 60,60 T120,45 T180,65 T240,30 T300,50"
-                  fill="none"
-                  stroke="#18181B"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="flex justify-between text-[10px] text-zinc-500 mt-1 font-mono">
-                <span>06:00</span>
-                <span>07:00</span>
-                <span>08:00</span>
-                <span>09:00</span>
-              </div>
-            </div>
-
-            {/* Quick Metrics */}
-            <div className="border-t border-zinc-100 pt-3 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-600 font-medium">Total Registered Users</span>
-                <span className="font-bold text-zinc-900">{statsData.users}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-600 font-medium">Draft Events</span>
-                <span className="font-bold text-amber-700">{statsData.events.drafts}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-600 font-medium">Failed Bookings</span>
-                <span className="font-bold text-red-600">{statsData.bookings.failed}</span>
-              </div>
-            </div>
-
-            <div className="pt-1 text-center">
-              <Link
-                href="/bookings"
-                className="inline-flex items-center gap-1 text-xs font-bold text-zinc-900 hover:underline"
-              >
-                <span>Show More</span>
-                <span>&gt;</span>
-              </Link>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Registered Users", value: statsData.users },
+                { label: "Draft Events", value: statsData.events.drafts },
+                { label: "Failed Bookings", value: statsData.bookings.failed },
+              ].map((stat) => (
+                <div key={stat.label} className="space-y-2.5">
+                  <p className="text-[11px] text-zinc-600 font-medium truncate">
+                    {stat.label}
+                  </p>
+                  <div className="flex gap-1">
+                    {String(stat.value)
+                      .padStart(2, "0")
+                      .split("")
+                      .map((digit, i) => (
+                        <div
+                          key={i}
+                          className="relative w-11 h-14 rounded-sm bg-zinc-900 overflow-hidden flex items-center justify-center"
+                        >
+                          <span className="text-white text-3xl font-bold font-mono">
+                            {digit}
+                          </span>
+                          <div className="absolute left-0 right-0 top-1/2 h-px bg-black/50" />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-
         </div>
 
       </div>

@@ -33,9 +33,6 @@ export default function AttentionPanel({
             </span>
           ) : null}
         </div>
-        <button className="text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest p-1">
-          •••
-        </button>
       </div>
 
       {/* Content */}
