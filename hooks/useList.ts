@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 
 import type { ApiError } from "@/lib/api/errors";
@@ -35,7 +35,7 @@ export interface UseListResult<T> {
 }
 
 /**
- * List state — pagination and filters — kept in the URL rather than component
+ * List state â€” pagination and filters â€” kept in the URL rather than component
  * state, so a filtered view survives a reload, can be pasted to someone else,
  * and the back button steps through it.
  *
@@ -51,7 +51,7 @@ export interface UseListResult<T> {
  *     }),
  *   );
  *
- * The fetcher may only read its `params` argument — it is re-run when the query
+ * The fetcher may only read its `params` argument â€” it is re-run when the query
  * string changes, not on every render.
  *
  * Uses useSearchParams, so the component calling it must sit inside a
@@ -61,7 +61,6 @@ export function useList<T>(
   fetcher: (params: ListParams) => Promise<ListResponse<T>>,
   options?: { pageSize?: number },
 ): UseListResult<T> {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -87,9 +86,19 @@ export function useList<T>(
   const replaceQuery = useCallback(
     (next: URLSearchParams) => {
       const query = next.toString();
-      router.push(query ? `${pathname}?${query}` : pathname);
+
+      // Native history rather than router.push. Only the query string changes
+      // and the page's server component does not depend on it, so a router
+      // navigation would round-trip to the server for a result identical to
+      // what is already on screen. Next syncs pushState with useSearchParams,
+      // so this hook still re-runs and the back button still works.
+      window.history.pushState(
+        null,
+        "",
+        query ? `${pathname}?${query}` : pathname,
+      );
     },
-    [pathname, router],
+    [pathname],
   );
 
   const setFilter = useCallback(
