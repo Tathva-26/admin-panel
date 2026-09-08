@@ -8,10 +8,7 @@ import { Input } from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { useMutation } from "@/hooks/useMutation";
 import { createVenue, updateVenue } from "@/lib/api/venues";
-import type { LatLng } from "@/lib/geo";
 import type { Venue, VenueInput } from "@/types";
-
-import MapPositionField from "./MapPositionField";
 
 /**
  * Mounted only while open, and keyed by venue in the parent — so the draft
@@ -24,15 +21,6 @@ interface VenueFormModalProps {
   onSaved: () => void;
 }
 
-/**
- * A venue either has both coordinates or neither. One without the other is not
- * a position, so the pair is held together rather than as two loose fields.
- */
-function toPosition(venue?: Venue | null): LatLng | null {
-  if (!venue || venue.latitude == null || venue.longitude == null) return null;
-  return { latitude: venue.latitude, longitude: venue.longitude };
-}
-
 export default function VenueFormModal({
   venue,
   onClose,
@@ -40,9 +28,6 @@ export default function VenueFormModal({
 }: VenueFormModalProps) {
   const [name, setName] = useState(venue?.name ?? "");
   const [location, setLocation] = useState(venue?.address ?? "");
-  const [position, setPosition] = useState<LatLng | null>(() =>
-    toPosition(venue),
-  );
   const [nameError, setNameError] = useState<string | null>(null);
 
   const save = useMutation(async (body: VenueInput) =>
@@ -56,13 +41,19 @@ export default function VenueFormModal({
     }
     setNameError(null);
 
+    /*
+     * latitude and longitude are deliberately absent rather than null.
+     *
+     * This form does not manage coordinates, so it must not clear them either
+     * — a venue that arrived with a position would lose it the first time
+     * someone corrected a typo in its name. PATCH takes the fields that
+     * changed, and these did not.
+     */
     const saved = await save.run({
       name: name.trim(),
       // The API field is `address`; "Location" is just what it is called on
       // screen, because that is what an admin would call it.
       address: location.trim() || null,
-      latitude: position?.latitude ?? null,
-      longitude: position?.longitude ?? null,
     });
 
     if (saved) onSaved();
@@ -127,12 +118,6 @@ export default function VenueFormModal({
             />
           )}
         </Field>
-
-        <MapPositionField
-          value={position}
-          onChange={setPosition}
-          error={errorFor("latitude") ?? errorFor("longitude")}
-        />
       </div>
     </Modal>
   );
