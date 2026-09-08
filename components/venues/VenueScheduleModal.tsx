@@ -4,8 +4,8 @@ import { PublishedBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
-import { formatDateTime } from "@/lib/format";
-import { relativeFromNow, toSlots, type Slot } from "@/lib/schedule";
+import { formatDateTime, formatTime } from "@/lib/format";
+import { relativeFromNow, slotState, toSlots } from "@/lib/schedule";
 import type { AdminEvent, Venue } from "@/types";
 
 interface VenueScheduleModalProps {
@@ -15,18 +15,6 @@ interface VenueScheduleModalProps {
   onClose: () => void;
 }
 
-const ASSUMED_DURATION_MS = 2 * 60 * 60 * 1000;
-
-function stateOf(slot: Slot, now: Date): "past" | "live" | "upcoming" {
-  const time = now.getTime();
-  const end = slot.end
-    ? slot.end.getTime()
-    : slot.start.getTime() + ASSUMED_DURATION_MS;
-
-  if (time >= end) return "past";
-  if (slot.start.getTime() <= time) return "live";
-  return "upcoming";
-}
 
 /**
  * Everything scheduled at one venue, in order, with the current moment marked.
@@ -66,7 +54,7 @@ export default function VenueScheduleModal({
       ) : (
         <ol className="space-y-1">
           {slots.map((slot) => {
-            const state = stateOf(slot, now);
+            const state = slotState(slot, now);
 
             return (
               <li
@@ -83,7 +71,7 @@ export default function VenueScheduleModal({
                   {formatDateTime(slot.start.toISOString())}
                   {slot.end ? (
                     <span className="block text-zinc-400">
-                      to {formatDateTime(slot.end.toISOString()).split(", ").pop()}
+                      to {formatTime(slot.end.toISOString())}
                     </span>
                   ) : null}
                 </div>

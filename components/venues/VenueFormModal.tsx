@@ -107,7 +107,11 @@ export default function VenueFormModal({
             <Input
               {...props}
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                // Otherwise "Required" sits there accusingly while they type.
+                if (nameError) setNameError(null);
+              }}
               placeholder="Main Hall"
             />
           )}

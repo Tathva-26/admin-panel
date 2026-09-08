@@ -1,7 +1,7 @@
 "use client";
 
 import Spinner from "@/components/ui/Spinner";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatTime } from "@/lib/format";
 import { relativeFromNow, venueActivity } from "@/lib/schedule";
 import type { AdminEvent } from "@/types";
 
@@ -34,11 +34,7 @@ export default function VenueActivityCell({
     return <span className="text-xs text-zinc-400">Nothing scheduled</span>;
   }
 
-  const { event, start, end } = {
-    event: activity.slot.event,
-    start: activity.slot.start,
-    end: activity.slot.end,
-  };
+  const { event, start, end } = activity.slot;
 
   if (activity.state === "live") {
     return (
@@ -53,7 +49,7 @@ export default function VenueActivityCell({
         <p className="truncate text-sm text-zinc-900">{event.heading}</p>
         {end ? (
           <p className="numeric text-xs text-zinc-500">
-            until {formatDateTime(end.toISOString()).split(", ").pop()}
+            until {formatTime(end.toISOString())}
           </p>
         ) : null}
       </div>

@@ -227,14 +227,30 @@ export default function DataTable<T>({
                 ))}
           </ul>
 
-          {/* Wide enough for the real table. */}
-          <div className={cn("overflow-x-auto", TABLE_VISIBLE[cardsBelow])}>
+          {/*
+            Bounded and scrollable in both axes, which is what makes the sticky
+            header work: `overflow-x-auto` alone forces `overflow-y` to auto,
+            so this div — not <main> — is already the scroll container the
+            header sticks to. Without a height it never scrolls, and the header
+            never sticks. The pagination footer sits outside, so it stays put.
+          */}
+          <div
+            className={cn(
+              "max-h-[min(38rem,calc(100dvh-20rem))] overflow-auto",
+              TABLE_VISIBLE[cardsBelow],
+            )}
+          >
             <table className="w-full border-collapse text-sm">
-              {/* Sticky so column labels survive scrolling a long list. */}
+              {/* Sticky so column labels survive scrolling a long list.
+                  The background is on the cells rather than the row: a <tr>
+                  cannot paint behind sticky <th>s, so rows would show through. */}
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-zinc-200 bg-zinc-50">
+                <tr className="border-b border-zinc-200">
                   {selectionOn ? (
-                    <th scope="col" className="w-10 px-4 py-2">
+                    <th
+                      scope="col"
+                      className="border-b border-zinc-200 bg-zinc-50 w-10 px-4 py-2"
+                    >
                       <input
                         type="checkbox"
                         aria-label="Select all on this page"
@@ -267,7 +283,7 @@ export default function DataTable<T>({
                             : undefined
                         }
                         className={cn(
-                          "px-4 py-2 text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                          "border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-medium tracking-wide text-zinc-500 uppercase",
                           ALIGN[column.align ?? "left"],
                           column.className,
                         )}

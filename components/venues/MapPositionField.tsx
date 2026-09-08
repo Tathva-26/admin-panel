@@ -35,21 +35,27 @@ export default function MapPositionField({
   const [raw, setRaw] = useState("");
   const [hint, setHint] = useState<string | null>(null);
 
-  function apply(input: string) {
+  /**
+   * `announce` decides whether a failure is worth saying out loud. Typing
+   * "11.3213, 75.9331" passes through a dozen states that are not yet valid,
+   * and flashing a red error at each one would be scolding someone for not
+   * having finished. So the complaint waits for blur or a paste — the moments
+   * the input is actually meant to be complete.
+   */
+  function apply(input: string, announce: boolean) {
     setRaw(input);
+    setHint(null);
 
-    if (!input.trim()) {
-      setHint(null);
-      return;
-    }
+    if (!input.trim()) return;
 
     const parsed = parseLatLng(input);
     if (parsed) {
-      setHint(null);
       onChange(parsed);
       setRaw("");
       return;
     }
+
+    if (!announce) return;
 
     // A short link is the common near-miss, so it gets its own instruction
     // rather than a generic "could not read that".
@@ -71,14 +77,15 @@ export default function MapPositionField({
           <Input
             {...props}
             value={raw}
-            onChange={(e) => apply(e.target.value)}
+            onChange={(e) => apply(e.target.value, false)}
+            onBlur={(e) => apply(e.target.value, true)}
             onPaste={(e) => {
               // Read the pasted text directly so a link resolves on paste
               // rather than waiting for another keystroke.
               const text = e.clipboardData.getData("text");
               if (text) {
                 e.preventDefault();
-                apply(text);
+                apply(text, true);
               }
             }}
             placeholder="https://www.google.com/maps/place/…"

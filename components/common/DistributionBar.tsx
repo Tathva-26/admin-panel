@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { cn } from "@/lib/cn";
 import type { BadgeTone } from "@/components/ui/Badge";
 
@@ -27,7 +29,7 @@ const DOTS: Record<BadgeTone, string> = {
 interface DistributionBarProps {
   segments: Segment[];
   /** Shown at the right of the legend row — a total, a sum of money, anything. */
-  trailing?: React.ReactNode;
+  trailing?: ReactNode;
   className?: string;
 }
 

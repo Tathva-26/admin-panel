@@ -23,8 +23,12 @@ export type VenueActivity =
 /**
  * An event with no end time is treated as running for this long, so a live
  * event does not vanish the instant it starts.
+ *
+ * Exported because the timeline needs the same figure. Two copies would let
+ * the live column and the schedule disagree about whether one event is still
+ * on, which is the one thing they must never do.
  */
-const ASSUMED_DURATION_MS = 2 * 60 * 60 * 1000;
+export const ASSUMED_DURATION_MS = 2 * 60 * 60 * 1000;
 
 function toDate(iso: string | null | undefined): Date | null {
   if (!iso) return null;
@@ -61,7 +65,7 @@ export function groupByVenue(events: AdminEvent[]): Map<number, AdminEvent[]> {
   return byVenue;
 }
 
-function endOf(slot: Slot): number {
+export function endOf(slot: Slot): number {
   return slot.end
     ? slot.end.getTime()
     : slot.start.getTime() + ASSUMED_DURATION_MS;
@@ -87,6 +91,17 @@ export function venueActivity(events: AdminEvent[], now: Date): VenueActivity {
   if (next) return { state: "next", slot: next };
 
   return { state: "idle" };
+}
+
+export type SlotState = "past" | "live" | "upcoming";
+
+/** Where a slot sits relative to `now`. Shared so the timeline and the live
+ * column cannot drift apart. */
+export function slotState(slot: Slot, now: Date): SlotState {
+  const time = now.getTime();
+  if (time >= endOf(slot)) return "past";
+  if (slot.start.getTime() <= time) return "live";
+  return "upcoming";
 }
 
 /** "in 40m", "in 3h", "in 5d" — coarse on purpose; exact times are in the column. */

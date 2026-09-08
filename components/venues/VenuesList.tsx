@@ -24,6 +24,10 @@ import VenueScheduleModal from "./VenueScheduleModal";
 /**
  * Events are fetched once for the whole table rather than per row. A venue list
  * is short, and one request beats N.
+ *
+ * One page only. A fest does not run more events than this, but if it ever
+ * does the counts below would quietly be wrong — so the limit is surfaced
+ * rather than assumed.
  */
 const SCHEDULE_PAGE_SIZE = 100;
 
@@ -172,6 +176,16 @@ export default function VenuesList() {
           New venue
         </Button>
       </div>
+
+      {/* Silently showing counts drawn from a truncated fetch would be worse
+          than showing none. */}
+      {(schedule.data?.total ?? 0) > SCHEDULE_PAGE_SIZE ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          There are {schedule.data?.total} events but only the first{" "}
+          {SCHEDULE_PAGE_SIZE} are counted here, so the schedule below may be
+          incomplete.
+        </p>
+      ) : null}
 
       {/* The schedule is secondary to the list — if it fails, the venues are
           still usable, so this says so quietly rather than taking over. */}

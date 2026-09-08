@@ -193,7 +193,9 @@ export default function UsersList() {
           placeholder="Search name or email…"
         />
 
-        <div className="flex gap-2 sm:ml-auto sm:contents">
+        {/* One row on a phone; from sm the children join the parent flex directly,
+            so the export button can push itself to the far end. */}
+        <div className="flex gap-2 sm:contents">
           <Select
             aria-label="Filter by role"
             className="h-9 w-full sm:h-8 sm:w-36"
