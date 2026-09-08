@@ -43,7 +43,7 @@ function AdminShellContent({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-[#EEEEEE]">
+    <div className="flex h-dvh overflow-hidden bg-zinc-50">
       <Sidebar open={navOpen} onNavigate={() => setNavOpen(false)} />
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">

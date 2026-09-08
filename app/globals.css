@@ -9,8 +9,12 @@
  * Internal tool: light mode only, on purpose. Nobody is using this on a phone
  * in a dark room, and supporting both doubles the surface for no benefit.
  */
+/*
+ * No background here on purpose. AdminShell paints the app surface, and a
+ * second colour underneath only shows through as a mismatched edge when the
+ * shell does not cover the viewport.
+ */
 body {
-  background-color: #B6D0E2;
   color: #18181b;
   font-family: var(--font-sans), system-ui, sans-serif;
 }
