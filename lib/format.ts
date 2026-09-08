@@ -127,3 +127,13 @@ export function dateTimeInputToIso(value: string): string | null {
   const date = new Date(`${value}:00+05:30`);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
+
+export function isoToDateInput(iso: string | null | undefined): string {
+  const dt = isoToDateTimeInput(iso);
+  return dt ? dt.slice(0, 10) : "";
+}
+
+export function isoToTimeInput(iso: string | null | undefined): string {
+  const dt = isoToDateTimeInput(iso);
+  return dt ? dt.slice(11, 16) : "";
+}
