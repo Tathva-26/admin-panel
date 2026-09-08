@@ -1,5 +1,8 @@
-import NotBuiltYet from "@/components/common/NotBuiltYet";
+import { Suspense } from "react";
+
+import BookingsList from "@/components/bookings/BookingsList";
 import PageHeader from "@/components/layout/PageHeader";
+import Spinner from "@/components/ui/Spinner";
 import { getNavItem } from "@/lib/nav";
 
 const nav = getNavItem("/bookings");
@@ -8,7 +11,15 @@ export default function BookingsPage() {
   return (
     <>
       <PageHeader title={nav.label} description={nav.description} />
-      <NotBuiltYet />
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-16 text-zinc-400">
+            <Spinner />
+          </div>
+        }
+      >
+        <BookingsList />
+      </Suspense>
     </>
   );
 }
