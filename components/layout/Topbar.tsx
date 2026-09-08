@@ -54,7 +54,7 @@ export default function Topbar({
               window.dispatchEvent(new CustomEvent("open-create-event"));
             }
           }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 hover:bg-black px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors shrink-0"
+          className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-zinc-900 hover:bg-black px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors shrink-0"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -62,17 +62,21 @@ export default function Topbar({
           <span>Add Event</span>
         </Link>
 
-        {/* Notification Bell */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative rounded-md border border-zinc-200 bg-white p-2 text-zinc-600 hover:bg-zinc-50 shrink-0 transition-colors"
+        <Link
+          href="/announcements?new=true"
+          onClick={() => {
+            if (typeof window !== "undefined" && window.location.pathname === "/announcements") {
+              window.dispatchEvent(new CustomEvent("open-create-announcement"));
+            }
+          }}
+          className="hidden sm:inline-flex items-center gap-1.5 rounded-md bg-zinc-900 hover:bg-black px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs transition-colors shrink-0"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-amber-600" />
-        </button>
+          <span>Add Announcement</span>
+        </Link>
+
 
         {/* User Profile Box */}
         {user ? (

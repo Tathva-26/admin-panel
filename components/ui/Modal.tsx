@@ -57,7 +57,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-lg border border-zinc-200 bg-white shadow-lg"
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-md border border-zinc-200 bg-white shadow-lg"
       >
         <div className="shrink-0 border-b border-zinc-200 px-5 py-3.5">
           <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>

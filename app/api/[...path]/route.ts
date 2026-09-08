@@ -257,7 +257,7 @@ let mockEvents: AdminEvent[] = [
   }
 ];
 
-const mockAnnouncements: Announcement[] = [
+let mockAnnouncements: Announcement[] = [
   {
     id: 1,
     title: "Registrations Open for Tathva '26",
@@ -450,12 +450,44 @@ export async function GET(
     }
 
     if (path[1] === "announcements") {
-      return NextResponse.json({
-        items: mockAnnouncements,
-        page: 1,
-        pageSize: 50,
-        total: mockAnnouncements.length
-      });
+      if (path.length === 2) {
+        let filtered = [...mockAnnouncements];
+        const search = url.searchParams.get("search");
+        const publishedStr = url.searchParams.get("published");
+
+        if (search) {
+          const q = search.toLowerCase();
+          filtered = filtered.filter(
+            (a) =>
+              a.title.toLowerCase().includes(q) ||
+              a.content.toLowerCase().includes(q)
+          );
+        }
+        if (publishedStr !== null && publishedStr !== undefined && publishedStr !== "") {
+          const isPub = publishedStr === "true";
+          filtered = filtered.filter((a) => a.published === isPub);
+        }
+
+        const page = parseInt(url.searchParams.get("page") || "1", 10);
+        const pageSize = parseInt(url.searchParams.get("pageSize") || "20", 10);
+        const total = filtered.length;
+        const start = (page - 1) * pageSize;
+        const items = filtered.slice(start, start + pageSize);
+
+        return NextResponse.json({ items, page, pageSize, total });
+      }
+
+      if (path.length === 3) {
+        const id = parseInt(path[2], 10);
+        const announcement = mockAnnouncements.find((a) => a.id === id);
+        if (!announcement) {
+          return NextResponse.json(
+            { message: "Announcement not found", code: "NOT_FOUND" },
+            { status: 404 }
+          );
+        }
+        return NextResponse.json({ announcement });
+      }
     }
 
     if (path[1] === "users") {
@@ -475,6 +507,11 @@ export async function GET(
         total: mockBookings.length
       });
     }
+  }
+
+  if (path[0] === "announcements" && path.length === 1) {
+    const publishedOnly = mockAnnouncements.filter((a) => a.published);
+    return NextResponse.json({ items: publishedOnly });
   }
 
   return NextResponse.json(
@@ -567,6 +604,79 @@ export async function POST(
     }
   }
 
+  if (path[0] === "admin" && path[1] === "announcements") {
+    if (path.length === 2) {
+      const body = await request.json();
+      if (!body.title?.trim() || !body.content?.trim()) {
+        const issues = [];
+        if (!body.title?.trim()) {
+          issues.push({ path: "title", message: "Title is required" });
+        }
+        if (!body.content?.trim()) {
+          issues.push({ path: "content", message: "Content is required" });
+        }
+        return NextResponse.json(
+          {
+            message: "Validation failed",
+            code: "VALIDATION_ERROR",
+            details: { issues },
+          },
+          { status: 422 }
+        );
+      }
+      const id =
+        mockAnnouncements.length > 0
+          ? Math.max(...mockAnnouncements.map((a) => a.id)) + 1
+          : 1;
+      const now = new Date().toISOString();
+
+      const newAnnouncement: Announcement = {
+        id,
+        title: body.title || "",
+        content: body.content || "",
+        published: !!body.published,
+        createdAt: now,
+        updatedAt: now,
+      };
+      mockAnnouncements.unshift(newAnnouncement);
+      return NextResponse.json({ announcement: newAnnouncement }, { status: 201 });
+    }
+
+    if (path.length === 4 && path[3] === "publish") {
+      const id = parseInt(path[2], 10);
+      const index = mockAnnouncements.findIndex((a) => a.id === id);
+      if (index === -1) {
+        return NextResponse.json(
+          { message: "Announcement not found", code: "NOT_FOUND" },
+          { status: 404 }
+        );
+      }
+      mockAnnouncements[index] = {
+        ...mockAnnouncements[index],
+        published: true,
+        updatedAt: new Date().toISOString(),
+      };
+      return NextResponse.json({ announcement: mockAnnouncements[index] });
+    }
+
+    if (path.length === 4 && path[3] === "unpublish") {
+      const id = parseInt(path[2], 10);
+      const index = mockAnnouncements.findIndex((a) => a.id === id);
+      if (index === -1) {
+        return NextResponse.json(
+          { message: "Announcement not found", code: "NOT_FOUND" },
+          { status: 404 }
+        );
+      }
+      mockAnnouncements[index] = {
+        ...mockAnnouncements[index],
+        published: false,
+        updatedAt: new Date().toISOString(),
+      };
+      return NextResponse.json({ announcement: mockAnnouncements[index] });
+    }
+  }
+
   return NextResponse.json(
     { message: "Route not found", code: "NOT_FOUND" },
     { status: 404 }
@@ -578,6 +688,45 @@ export async function PATCH(
   context: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await context.params;
+
+  if (path[0] === "admin" && path[1] === "announcements" && path.length === 3) {
+    const id = parseInt(path[2], 10);
+    const index = mockAnnouncements.findIndex((a) => a.id === id);
+    if (index === -1) {
+      return NextResponse.json(
+        { message: "Announcement not found", code: "NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+    const body = await request.json();
+    if (body.title !== undefined && !body.title.trim()) {
+      return NextResponse.json(
+        {
+          message: "Validation failed",
+          code: "VALIDATION_ERROR",
+          details: { issues: [{ path: "title", message: "Title cannot be blank" }] },
+        },
+        { status: 422 }
+      );
+    }
+    if (body.content !== undefined && !body.content.trim()) {
+      return NextResponse.json(
+        {
+          message: "Validation failed",
+          code: "VALIDATION_ERROR",
+          details: { issues: [{ path: "content", message: "Content cannot be blank" }] },
+        },
+        { status: 422 }
+      );
+    }
+    const updated: Announcement = {
+      ...mockAnnouncements[index],
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+    mockAnnouncements[index] = updated;
+    return NextResponse.json({ announcement: updated });
+  }
 
   if (path[0] === "admin" && path[1] === "events" && path.length === 3) {
     const id = parseInt(path[2], 10);
@@ -622,6 +771,12 @@ export async function DELETE(
   context: { params: Promise<{ path: string[] }> }
 ) {
   const { path } = await context.params;
+
+  if (path[0] === "admin" && path[1] === "announcements" && path.length === 3) {
+    const id = parseInt(path[2], 10);
+    mockAnnouncements = mockAnnouncements.filter((a) => a.id !== id);
+    return new NextResponse(null, { status: 204 });
+  }
 
   if (path[0] === "admin" && path[1] === "events" && path.length === 3) {
     const id = parseInt(path[2], 10);

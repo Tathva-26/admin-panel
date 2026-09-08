@@ -12,8 +12,8 @@ export default function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-zinc-200 bg-white",
-        className ?? "p-4",
+        "rounded-md border border-zinc-200 bg-white p-5",
+        className,
       )}
     >
       {children}
