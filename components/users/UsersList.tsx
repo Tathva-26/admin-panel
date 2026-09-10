@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import Avatar from "@/components/common/Avatar";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -16,8 +16,9 @@ import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
 import { listUsers, updateUserRole } from "@/lib/api/users";
 import { formatDate } from "@/lib/format";
+import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
-import { ROLES, type AdminUser, type Role } from "@/types";
+import { ORDERS, ROLES, type AdminUser, type Role } from "@/types";
 
 /** The role a user would be moved to — this panel only ever toggles. */
 const opposite = (role: Role): Role => (role === "ADMIN" ? "USER" : "ADMIN");
@@ -55,7 +56,7 @@ export default function UsersList() {
       search: asText(filters.search),
       role: asEnum(filters.role, ROLES),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
 
@@ -70,18 +71,13 @@ export default function UsersList() {
     search: asText(users.filters.search),
     role: asEnum(users.filters.role, ROLES),
     sort: asText(users.filters.sort),
-    order: users.order === "desc" ? ("desc" as const) : undefined,
+    order: asEnum(users.filters.order, ORDERS),
   };
 
-  const fetchPage = useCallback(
-    (page: number, pageSize: number) =>
-      listUsers({ ...activeQuery, page, pageSize }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeQuery.search, activeQuery.role, activeQuery.sort, activeQuery.order],
-  );
 
   const csv = useCsvExport({
-    fetchPage,
+    fetchPage: (page, pageSize) =>
+      listUsers({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "users",
@@ -205,7 +201,7 @@ export default function UsersList() {
             <option value="">All roles</option>
             {ROLES.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {roleLabel(role)}
               </option>
             ))}
           </Select>

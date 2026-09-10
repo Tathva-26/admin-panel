@@ -14,7 +14,15 @@ import axios from "axios";
  * The contract roots every path at `/api`, so that is appended here rather than
  * repeated in every call.
  */
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "";
+/*
+ * Falls back to the local backend rather than "". An empty origin makes every
+ * request relative, so with NEXT_PUBLIC_API_URL unset they hit this app's own
+ * origin — which serves no /api routes, so the failure arrives as Next's HTML
+ * 404 page parsed as an API error instead of a plain "cannot reach the
+ * backend". That was survivable while an in-repo mock answered those paths;
+ * it no longer exists.
+ */
+const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
@@ -41,6 +49,9 @@ api.interceptors.response.use(
     if (typeof window !== "undefined" && error.response?.status === 401) {
       window.localStorage.removeItem("jwt");
       if (window.location.pathname !== "/login") {
+        // Hard navigation, as with logout: an expired session must not
+        // leave the previous admin's data sitting in memory.
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = "/login?error=session_expired";
       }
     }

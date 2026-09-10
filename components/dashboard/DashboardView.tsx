@@ -195,6 +195,11 @@ export default function DashboardView() {
                     {/* NO GRADIENTS — Use simple solid gray surface if image is absent */}
                     <div className="h-28 rounded-md overflow-hidden bg-zinc-100 border border-zinc-200 relative">
                       {event.picture ? (
+                        // next/image needs every remote host declared up front
+                        // in remotePatterns. This URL is typed into the event
+                        // form by an admin, so the host is not knowable at
+                        // build time.
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={event.picture}
                           alt={event.heading}

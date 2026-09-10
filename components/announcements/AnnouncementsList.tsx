@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import { PublishedBadge } from "@/components/common/StatusBadge";
@@ -16,9 +16,9 @@ import {
 } from "@/lib/api/announcements";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
-import { asBool } from "@/lib/params";
+import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import type { Announcement } from "@/types";
+import { ORDERS, type Announcement } from "@/types";
 
 import AnnouncementFormModal from "./AnnouncementFormModal";
 import AnnouncementRowActions from "./AnnouncementRowActions";
@@ -37,6 +37,8 @@ export default function AnnouncementsList() {
       page,
       pageSize,
       published: asBool(filters.published),
+      sort: asText(filters.sort),
+      order: asEnum(filters.order, ORDERS),
     }),
   );
   const refetchAnnouncements = announcements.refetch;
@@ -53,15 +55,6 @@ export default function AnnouncementsList() {
 
   const isNewParam = searchParams.get("new") === "true";
   const modalOpen = formOpen || isNewParam;
-
-  useEffect(() => {
-    const handleOpen = () => {
-      setEditingAnnouncementId(null);
-      setFormOpen(true);
-    };
-    window.addEventListener("open-create-announcement", handleOpen);
-    return () => window.removeEventListener("open-create-announcement", handleOpen);
-  }, []);
 
   const closeForm = useCallback(() => {
     setFormOpen(false);
@@ -131,6 +124,7 @@ export default function AnnouncementsList() {
     },
     {
       key: "title",
+      sortKey: "title",
       header: "Title",
       primary: true,
       cell: (a) => (
@@ -150,6 +144,7 @@ export default function AnnouncementsList() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "Created",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
@@ -157,6 +152,8 @@ export default function AnnouncementsList() {
     },
     {
       key: "updatedAt",
+      // Not sortable: the backend's sort enum is ['createdAt', 'title'], and
+      // asking for updatedAt comes back 422.
       header: "Updated",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
@@ -166,7 +163,9 @@ export default function AnnouncementsList() {
       key: "actions",
       header: "",
       className: "w-12",
-      hideOnMobile: true,
+      // isActions, not hideOnMobile: hiding it the way an ordinary column is
+      // hidden left no way to act on a row from a phone at all.
+      isActions: true,
       cell: (a) => (
         <AnnouncementRowActions
           announcement={a}
@@ -196,18 +195,6 @@ export default function AnnouncementsList() {
           </Select>
         </div>
 
-        <div className="flex gap-2 sm:ml-auto">
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setEditingAnnouncementId(null);
-              setFormOpen(true);
-            }}
-          >
-            + New Announcement
-          </Button>
-        </div>
       </div>
 
       {outcome ? (
@@ -244,6 +231,9 @@ export default function AnnouncementsList() {
         loading={announcements.loading}
         error={announcements.error}
         onRetry={announcements.refetch}
+        sort={announcements.sort}
+        order={announcements.order}
+        onToggleSort={announcements.toggleSort}
         selectable
         selected={selected}
         onSelectedChange={setSelected}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import DataTable, { type Column } from "@/components/common/DataTable";
 import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
@@ -12,11 +12,13 @@ import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { listBookings } from "@/lib/api/bookings";
 import { useList } from "@/hooks/useList";
-import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 import { asEnum, asNumber, asText } from "@/lib/params";
 import {
   BOOKING_KINDS,
   BOOKING_STATUSES,
+  ORDERS,
   type Booking,
   type BookingStatus,
 } from "@/types";
@@ -46,14 +48,20 @@ const EXPORT_HEADERS = [
   "Total (INR)",
   "Currency",
   "Booked",
+  "Room",
+  "Check in",
+  "Check out",
+  "Nights",
+  "Meals (veg)",
+  "Meals (non-veg)",
 ];
 
 const toExportRow = (booking: Booking): CsvCell[] => [
   booking.bookingUid,
   booking.status,
   booking.kind,
-  booking.user.name,
-  booking.user.email,
+  booking.user?.name ?? "",
+  booking.user?.email ?? "",
   booking.event?.heading ?? "",
   booking.qty,
   // Rupees as a plain decimal, which is what a spreadsheet can sum.
@@ -63,6 +71,20 @@ const toExportRow = (booking: Booking): CsvCell[] => [
   paiseToRupeeInput(booking.amountTotal),
   booking.currency,
   formatDateTime(booking.createdAt),
+  booking.accommodation?.room ?? "",
+  booking.accommodation?.startDate ?? "",
+  booking.accommodation?.endDate ?? "",
+  booking.accommodation?.nights ?? "",
+  booking.accommodation
+    ? booking.accommodation.foodDay24Veg +
+      booking.accommodation.foodDay25Veg +
+      booking.accommodation.foodDay26Veg
+    : "",
+  booking.accommodation
+    ? booking.accommodation.foodDay24NonVeg +
+      booking.accommodation.foodDay25NonVeg +
+      booking.accommodation.foodDay26NonVeg
+    : "",
 ];
 
 export default function BookingsList() {
@@ -76,7 +98,7 @@ export default function BookingsList() {
       // Not exposed as an input — it comes from linking in from an event.
       eventId: asNumber(filters.eventId),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
 
@@ -89,25 +111,13 @@ export default function BookingsList() {
     kind: asEnum(bookings.filters.kind, BOOKING_KINDS),
     eventId: asNumber(bookings.filters.eventId),
     sort: asText(bookings.filters.sort),
-    order: bookings.order === "desc" ? ("desc" as const) : undefined,
+    order: asEnum(bookings.filters.order, ORDERS),
   };
 
-  const fetchPage = useCallback(
-    (page: number, pageSize: number) =>
-      listBookings({ ...activeQuery, page, pageSize }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeQuery.search,
-      activeQuery.status,
-      activeQuery.kind,
-      activeQuery.eventId,
-      activeQuery.sort,
-      activeQuery.order,
-    ],
-  );
 
   const csv = useCsvExport({
-    fetchPage,
+    fetchPage: (page, pageSize) =>
+      listBookings({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "bookings",
@@ -116,7 +126,7 @@ export default function BookingsList() {
   const statusSplit: Segment[] = useMemo(
     () =>
       BOOKING_STATUSES.map((status) => ({
-        label: status.charAt(0) + status.slice(1).toLowerCase(),
+        label: bookingStatusLabel(status),
         value: bookings.items.filter((b) => b.status === status).length,
         tone: STATUS_TONES[status],
       })),
@@ -150,23 +160,42 @@ export default function BookingsList() {
       header: "User",
       cell: (booking) => (
         <div className="min-w-0">
-          <p className="truncate text-zinc-900">{booking.user.name}</p>
-          <p className="truncate text-xs text-zinc-500">{booking.user.email}</p>
+          {/* A booking with no user is degenerate data, but it should render as
+              a gap rather than take the page down. */}
+          <p className="truncate text-zinc-900">
+            {booking.user?.name ?? "—"}
+          </p>
+          <p className="truncate text-xs text-zinc-500">
+            {booking.user?.email ?? ""}
+          </p>
         </div>
       ),
     },
     {
       key: "event",
-      header: "Event",
+      header: "Event / stay",
       className: "text-zinc-600",
-      cell: (booking) => booking.event?.heading ?? "—",
+      cell: (booking) =>
+        booking.accommodation ? (
+          <div className="min-w-0">
+            <p className="truncate text-zinc-900">
+              {booking.accommodation.room}
+            </p>
+            <p className="numeric truncate text-xs text-zinc-500">
+              {formatDate(booking.accommodation.startDate)} &rarr;{" "}
+              {formatDate(booking.accommodation.endDate)}
+            </p>
+          </div>
+        ) : (
+          (booking.event?.heading ?? "—")
+        ),
     },
     {
       key: "kind",
       header: "Kind",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
-      cell: (booking) => booking.kind,
+      cell: (booking) => bookingKindLabel(booking.kind),
     },
     {
       key: "qty",
@@ -206,7 +235,7 @@ export default function BookingsList() {
       cell: (booking) => (
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={() => setEditing(booking)}>
-            Status
+            View
           </Button>
         </div>
       ),
@@ -232,7 +261,7 @@ export default function BookingsList() {
             <option value="">All statuses</option>
             {BOOKING_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {bookingStatusLabel(status)}
               </option>
             ))}
           </Select>
@@ -246,7 +275,7 @@ export default function BookingsList() {
             <option value="">All kinds</option>
             {BOOKING_KINDS.map((kind) => (
               <option key={kind} value={kind}>
-                {kind}
+                {bookingKindLabel(kind)}
               </option>
             ))}
           </Select>

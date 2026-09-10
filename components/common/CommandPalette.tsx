@@ -4,9 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { listAnnouncements } from "@/lib/api/announcements";
+import { listBookings } from "@/lib/api/bookings";
 import { listEvents } from "@/lib/api/events";
+import { listUsers } from "@/lib/api/users";
+import { listVenues } from "@/lib/api/venues";
+import { formatInr } from "@/lib/format";
+import { bookingStatusLabel, eventTypeLabel } from "@/lib/labels";
 import { NAV_ITEMS } from "@/lib/nav";
-import type { AdminEvent } from "@/types";
 
 interface PaletteItem {
   id: string;
@@ -18,7 +23,9 @@ interface PaletteItem {
 
 const SEARCH_DEBOUNCE_MS = 200;
 const MIN_SEARCH_LENGTH = 2;
-const MAX_EVENT_RESULTS = 5;
+
+/** Per resource. Enough to find the thing, few enough to still scan the list. */
+const MAX_PER_GROUP = 4;
 
 export default function CommandPalette({
   open,
@@ -30,7 +37,8 @@ export default function CommandPalette({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [results, setResults] = useState<PaletteItem[]>([]);
+  const [searching, setSearching] = useState(false);
 
   // Cmd+K on a Mac, Ctrl+K everywhere else. Registered once, globally.
   useEffect(() => {
@@ -46,8 +54,15 @@ export default function CommandPalette({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onOpenChange]);
 
-  // Event lookup, debounced. Everything sets state from inside the timeout
-  // rather than the effect body, which React 19's lint rules require.
+  /*
+   * Searches every resource at once, not just events — the button says "search
+   * anything", and typing a person's name finding nothing is worse than not
+   * offering it.
+   *
+   * allSettled, so one failing endpoint (bookings, say, before its routes
+   * exist) still lets the others return. The palette is a convenience; it
+   * degrades rather than erroring.
+   */
   useEffect(() => {
     if (!open) return;
 
@@ -56,21 +71,96 @@ export default function CommandPalette({
 
     const timer = setTimeout(async () => {
       if (term.length < MIN_SEARCH_LENGTH) {
-        if (active) setEvents([]);
+        if (active) {
+          setResults([]);
+          setSearching(false);
+        }
         return;
       }
 
-      try {
-        const result = await listEvents({
-          search: term,
-          pageSize: MAX_EVENT_RESULTS,
-        });
-        if (active) setEvents(result.items);
-      } catch {
-        // The palette is a convenience; a failed lookup just shows no events
-        // rather than an error the user did not ask for.
-        if (active) setEvents([]);
+      if (active) setSearching(true);
+
+      const [events, users, venues, announcements, bookings] =
+        await Promise.allSettled([
+          listEvents({ search: term, pageSize: MAX_PER_GROUP }),
+          listUsers({ search: term, pageSize: MAX_PER_GROUP }),
+          listVenues({ search: term, pageSize: MAX_PER_GROUP }),
+          listAnnouncements({ search: term, pageSize: MAX_PER_GROUP }),
+          listBookings({ search: term, pageSize: MAX_PER_GROUP }),
+        ]);
+
+      if (!active) return;
+
+      const next: PaletteItem[] = [];
+
+      if (events.status === "fulfilled") {
+        for (const event of events.value.items) {
+          next.push({
+            id: `event:${event.id}`,
+            label: event.heading,
+            hint: `${eventTypeLabel(event.type)} · ${event.published ? "Published" : "Draft"}`,
+            group: "Events",
+            href: `/events?eventId=${event.id}`,
+          });
+        }
       }
+
+      if (users.status === "fulfilled") {
+        for (const user of users.value.items) {
+          next.push({
+            id: `user:${user.id}`,
+            label: user.name,
+            hint: user.email,
+            group: "People",
+            href: `/users?search=${encodeURIComponent(user.email)}`,
+          });
+        }
+      }
+
+      if (venues.status === "fulfilled") {
+        for (const venue of venues.value.items) {
+          next.push({
+            id: `venue:${venue.id}`,
+            label: venue.name,
+            hint: venue.address ?? undefined,
+            group: "Venues",
+            href: `/venues?search=${encodeURIComponent(venue.name)}`,
+          });
+        }
+      }
+
+      if (announcements.status === "fulfilled") {
+        for (const announcement of announcements.value.items) {
+          next.push({
+            id: `announcement:${announcement.id}`,
+            label: announcement.title,
+            hint: announcement.published ? "Published" : "Draft",
+            group: "Announcements",
+            href: `/announcements?search=${encodeURIComponent(announcement.title)}`,
+          });
+        }
+      }
+
+      if (bookings.status === "fulfilled") {
+        for (const booking of bookings.value.items) {
+          next.push({
+            id: `booking:${booking.bookingUid}`,
+            label: booking.bookingUid,
+            hint: [
+              booking.user?.name,
+              formatInr(booking.amountTotal),
+              bookingStatusLabel(booking.status),
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            group: "Bookings",
+            href: `/bookings?search=${encodeURIComponent(booking.bookingUid)}`,
+          });
+        }
+      }
+
+      setResults(next);
+      setSearching(false);
     }, SEARCH_DEBOUNCE_MS);
 
     return () => {
@@ -93,14 +183,7 @@ export default function CommandPalette({
         href: nav.href,
       }),
     ),
-    ...events.map((event) => ({
-      id: `event:${event.id}`,
-      label: event.heading,
-      hint: event.published ? "Published" : "Draft",
-      group: "Events",
-      // No event detail route yet, so this filters the list down to it.
-      href: `/events?search=${encodeURIComponent(event.heading)}`,
-    })),
+    ...results,
   ];
 
   // Clamped rather than reset in an effect, so results changing under the
@@ -111,7 +194,7 @@ export default function CommandPalette({
     onOpenChange(false);
     setQuery("");
     setActiveIndex(0);
-    setEvents([]);
+    setResults([]);
   };
 
   const go = (item: PaletteItem | undefined) => {
@@ -136,6 +219,17 @@ export default function CommandPalette({
       go(items[active]);
     }
   };
+
+  // Without this it would claim nothing matched while still looking.
+  let emptyMessage: string;
+  if (searching) {
+    emptyMessage = "Searching…";
+  } else if (query.trim().length < MIN_SEARCH_LENGTH) {
+    emptyMessage =
+      "Type to search events, people, venues, announcements and bookings.";
+  } else {
+    emptyMessage = `Nothing matches “${query}”.`;
+  }
 
   let lastGroup = "";
 
@@ -162,13 +256,13 @@ export default function CommandPalette({
             setActiveIndex(0);
           }}
           onKeyDown={onInputKeyDown}
-          placeholder="Search sections and events…"
+          placeholder="Search events, people, venues, bookings…"
           className="w-full shrink-0 border-b border-zinc-200 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400"
         />
 
         {items.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-zinc-500">
-            Nothing matches “{query}”.
+            {emptyMessage}
           </p>
         ) : (
           <ul className="overflow-y-auto py-1">

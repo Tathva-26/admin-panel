@@ -1,303 +1,74 @@
-## Admin Features
+# Tathva '26 Admin Panel
 
-This frontend currently includes three admin features:
+Internal admin tool for the Tathva team. Manage events, venues, announcements, users and
+bookings for the fest.
 
-* **Events**
-* **Needs Attention**
-* **Announcements**
+Built with Next 16 (App Router), React 19, TypeScript, Tailwind v4 and axios.
 
-These features are implemented on the frontend and communicate with the real backend through the API client and resource modules under `lib/api/`.
+## Getting started
 
----
-
-## Events
-
-The Events page provides the main event-management workflow for administrators.
-
-### Implemented
-
-* Paginated event list
-* Search by heading, description, or committee
-* Filter by event type
-* Filter by published/draft state
-* Create events
-* Edit events
-* Publish events
-* Unpublish events
-* Archive events
-* Row-level actions
-* Bulk publish/unpublish
-* CSV export
-* Venue selection
-* Team-event configuration
-* Capacity
-* Price
-* Ticket ID
-* Committee
-* Event description and catchy paragraph
-* Picture URL
-* Date, start time, and end time
-* Publish-immediately option
-* Loading, empty, retry, and error states
-* Field-level API validation errors
-
-### Event data
-
-Prices are handled as integer **paise** at the API boundary.
-
-Dates entered through the event form are interpreted as **IST** and sent to the API as ISO timestamps. Event dates are displayed in IST.
-
-When editing an event, the frontend sends only the fields that have changed.
-
-### Event actions
-
-The available row actions are:
-
-* Edit
-* Publish / Unpublish
-* Archive
-
-Archiving uses the event `DELETE` endpoint. The frontend treats this operation as an archive rather than assuming that the backend permanently deletes the event.
-
-### Backend endpoints
-
-The real backend is expected to provide:
-
-```text
-GET    /api/admin/events
-GET    /api/admin/events/:id
-POST   /api/admin/events
-PATCH  /api/admin/events/:id
-POST   /api/admin/events/:id/publish
-POST   /api/admin/events/:id/unpublish
-DELETE /api/admin/events/:id
-
-GET    /api/admin/venues
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
 ```
 
-The backend remains responsible for authoritative validation and business rules, including:
+Open [http://localhost:3000](http://localhost:3000).
 
-* Team-event requirements
-* Date consistency
-* Capacity
-* Price
-* Publishability
-* Registration behavior
-* Ticket behavior
-* Venue rules
+Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without `/api` — the API
+client appends that itself.
 
-### Current limitations
+## Sections
 
-The current frontend does not provide an Events sorting control.
+| Section | What it does |
+| --- | --- |
+| Dashboard | Counts across the fest, plus events that need attention |
+| Events | Create, edit, publish and archive events |
+| Venues | Places an event can be scheduled at, and what is on at each |
+| Announcements | Notices shown on the public site once published |
+| Users | Registered users and their roles |
+| Bookings | Event and accommodation bookings, and their payment state |
 
-The frontend also does not currently validate that the end time occurs after the start time. Some event validation is intentionally left to the backend.
+Sign-in is Google OAuth through the backend; admin access is decided by the role on the
+account, not by anything in the frontend.
 
----
+## Project structure
 
-## Needs Attention
-
-Needs Attention is a dashboard feature that identifies events that may require administrator review.
-
-It is **frontend-computed**. There is currently no separate backend Needs Attention endpoint.
-
-### Current checks
-
-The dashboard currently checks for:
-
-1. **Published event without a venue**
-2. **Published event without a start time**
-3. **Team event with a team size below 2**
-4. **Draft event whose start time has already passed**
-5. **Published event that is full**
-
-Warnings are shown before informational items.
-
-### Check action
-
-Each item has a single:
-
-**Check**
-
-action.
-
-Check opens the specific event in the Events editor so the administrator can inspect and decide what to do.
-
-Check does **not** automatically:
-
-* Fix the event
-* Publish the event
-* Unpublish the event
-* Archive the event
-* Change any event data
-* Mark the issue as resolved
-
-The administrator remains responsible for making any required correction through the normal Events workflow.
-
-### Current limitation
-
-Needs Attention currently examines the first **100 events** returned by the Events API.
-
-There is no pagination loop, backend issue tracking, or resolution state.
-
-The rules are defined in the frontend and can be found in:
-
-```text
-lib/attention.ts
+```
+app/            routes, one folder per section
+components/
+  layout/       shell, sidebar, topbar
+  ui/           buttons, inputs, badges, modals
+  common/       data table, search, dialogs, command palette
+  <section>/    screens for one section
+context/        auth session
+hooks/          data fetching, list state, mutations, CSV export
+lib/
+  api/          axios client and one module per resource
+  format.ts     money and date formatting
+  schedule.ts   what is on at a venue, and when
+  attention.ts  dashboard checks for events needing review
+types/          API types
 ```
 
-If new attention rules are added or existing rules are changed, update this file and update the documentation accordingly.
+## Scripts
 
----
-
-## Announcements
-
-The Announcements page provides administrators with announcement management.
-
-### Implemented
-
-* Paginated announcement list
-* Published/draft filtering
-* Create announcement
-* Edit announcement
-* Publish announcement
-* Unpublish announcement
-* Delete announcement
-* Row-level actions
-* Bulk publish/unpublish
-* Title and content fields
-* Publish-immediately option
-* Field-level API validation errors
-* Loading states
-* Empty states
-* Retryable error states
-* Mutation feedback
-
-When editing an announcement, the frontend sends only the fields that have changed.
-
-### Backend endpoints
-
-The real backend is expected to provide:
-
-```text
-GET    /api/admin/announcements
-GET    /api/admin/announcements/:id
-POST   /api/admin/announcements
-PATCH  /api/admin/announcements/:id
-POST   /api/admin/announcements/:id/publish
-POST   /api/admin/announcements/:id/unpublish
-DELETE /api/admin/announcements/:id
+```bash
+npm run dev      # development server
+npm run build    # production build
+npm start        # serve the production build
+npm run lint     # eslint
 ```
 
-### Current limitations
+## API
 
-The current Announcements UI does not expose a search control.
+The panel talks to the Tathva backend over REST. Endpoint shapes are documented in
+`admin-panel-frontend-api.md`, and mirrored as types in `types/index.ts`.
 
-The current Announcements UI also does not expose sorting controls.
+All requests go through `lib/api/client.ts`, which handles the base URL, auth header and
+error parsing. Resource modules in `lib/api/` use its helpers rather than importing axios
+directly.
 
-The frontend treats announcement deletion as a permanent delete operation. The backend implementation should therefore match the expected API semantics.
-
----
-
-## Frontend ↔ Backend Integration
-
-The feature code is separated from the API layer.
-
-Resource-specific API requests should remain in:
-
-```text
-lib/api/
-```
-
-The main feature areas currently use:
-
-```text
-lib/api/events.ts
-lib/api/venues.ts
-lib/api/announcements.ts
-```
-
-The shared API client is responsible for communicating with the backend.
-
-The real backend must provide the endpoints expected by these modules and return the response structures defined by the project's API contract.
-
-For list responses, the frontend expects the standard pagination structure:
-
-```text
-{
-  items,
-  page,
-  pageSize,
-  total
-}
-```
-
-Resource responses should follow the documented response wrappers, such as:
-
-```text
-{
-  event: ...
-}
-```
-
-and
-
-```text
-{
-  announcement: ...
-}
-```
-
-Backend validation errors should provide enough information for the frontend to associate field errors with the appropriate form fields.
-
----
-
-## Authentication
-
-Events and Announcements are admin features and must ultimately be protected by the real backend.
-
-The backend must determine whether the authenticated user has the required admin role.
-
-The frontend should handle authentication/authorization responses according to the API contract, including:
-
-* `401` — invalid or expired authentication
-* `403` — authenticated but not authorized as an admin
-* `404` — requested resource does not exist
-* `409` — resource conflict
-* `422` — validation/business-rule error
-* `429` — rate limited
-* `500` — server error
-
----
-
-The intended production architecture is:
-
-```text
-Admin UI
-   ↓
-lib/api/*
-   ↓
-Shared API client
-   ↓
-Real Backend API
-   ↓
-Database
-```
-
----
-
-## Important Maintenance Notes
-
-When extending these features:
-
-* Keep API requests inside the appropriate `lib/api/` resource module.
-* Follow the existing shared API client and error-handling patterns.
-* Keep money values in integer paise at the API boundary.
-* Keep API dates in the format expected by the backend contract.
-* Preserve the standard pagination response shape.
-* Preserve partial-update behavior for `PATCH` requests.
-* Keep publish/unpublish as explicit backend actions.
-* Do not make Needs Attention automatically modify event data.
-* Update `lib/attention.ts` when adding or changing attention rules.
-* Update this README when the actual UI behavior changes.
-
-The API contract remains the source of truth for the frontend/backend boundary.
+Two conventions the API expects and the UI relies on: money is an integer number of paise,
+and dates cross the wire as ISO timestamps while displaying in IST. `lib/format.ts` has the
+conversions — use them rather than converting inline.

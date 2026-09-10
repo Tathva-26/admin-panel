@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
@@ -41,17 +41,31 @@ export interface UseCsvExportResult {
  * Shared rather than repeated per section: the paging loop, the safety cap and
  * the failure handling are identical everywhere, and only the columns differ.
  */
-export function useCsvExport<T>({
-  fetchPage,
-  headers,
-  toRow,
-  filename,
-}: UseCsvExportOptions<T>): UseCsvExportResult {
+export function useCsvExport<T>(
+  options: UseCsvExportOptions<T>,
+): UseCsvExportResult {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [truncated, setTruncated] = useState(false);
 
+  /*
+   * Held in a ref, the same way useApi and useMutation hold their callbacks.
+   *
+   * `fetchPage` closes over the section's current filters, so it is a new
+   * function every render. Taking it as a dependency would force every caller
+   * to memoise it by hand — which all three did, each with its own
+   * exhaustive-deps suppression listing the filters one by one. That is a
+   * standing invitation to add a filter, forget the list, and quietly export
+   * yesterday's query.
+   */
+  const optionsRef = useRef(options);
+  useEffect(() => {
+    optionsRef.current = options;
+  });
+
   const exportCsv = useCallback(async () => {
+    const { fetchPage, headers, toRow, filename } = optionsRef.current;
+
     setExporting(true);
     setError(null);
     setTruncated(false);
@@ -80,7 +94,7 @@ export function useCsvExport<T>({
     } finally {
       setExporting(false);
     }
-  }, [fetchPage, headers, toRow, filename]);
+  }, []);
 
   return { exportCsv, exporting, error, truncated };
 }
