@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import Button from "@/components/ui/Button";
 import ErrorState from "@/components/ui/ErrorState";
@@ -66,12 +66,6 @@ function AnnouncementFormDialog({
   );
 
   const mutation = isEdit ? update : create;
-
-  useEffect(() => {
-    if (mutation.error?.status === 409) {
-      onSaved();
-    }
-  }, [mutation.error, onSaved]);
 
   const set = <K extends keyof AnnouncementInput>(
     key: K,
