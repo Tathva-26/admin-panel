@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
@@ -102,6 +102,7 @@ function EventFormDialog({
   const [priceInput, setPriceInput] = useState(() =>
     event ? paiseToRupeeInput(event.price) : "0.00",
   );
+  const [priceError, setPriceError] = useState<string | undefined>();
 
   const [dateInput, setDateInput] = useState(() =>
     isoToDateInput(event?.startTime ?? event?.datetime),
@@ -125,18 +126,15 @@ function EventFormDialog({
 
   const mutation = isEdit ? update : create;
 
-  useEffect(() => {
-    if (mutation.error?.status === 409) {
-      onSaved();
-    }
-  }, [mutation.error, onSaved]);
-
   const set = <K extends keyof EventInput>(key: K, value: EventInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   function handlePriceChange(value: string) {
     setPriceInput(value);
     const paise = rupeeInputToPaise(value);
+    setPriceError(
+      paise === null ? "Enter a valid price with up to two decimals." : undefined,
+    );
     if (paise !== null) set("price", paise);
   }
 
@@ -187,7 +185,10 @@ function EventFormDialog({
 
   async function handleSubmit() {
     const paise = rupeeInputToPaise(priceInput);
-    if (paise === null) return;
+    if (paise === null) {
+      setPriceError("Enter a valid price with up to two decimals.");
+      return;
+    }
 
     const startIso =
       dateInput && startTimeInput
@@ -197,9 +198,17 @@ function EventFormDialog({
       dateInput && endTimeInput
         ? dateTimeInputToIso(`${dateInput}T${endTimeInput}`)
         : null;
-    const datetimeIso =
-      startIso ??
-      (dateInput ? dateTimeInputToIso(`${dateInput}T00:00`) : null);
+    const originalDate = event ? isoToDateInput(event.datetime) : "";
+    const preserveLegacyDatetime =
+      isEdit &&
+      event &&
+      !event.startTime &&
+      !startTimeInput &&
+      dateInput === originalDate;
+    const datetimeIso = preserveLegacyDatetime
+      ? event.datetime
+      : startIso ??
+        (dateInput ? dateTimeInputToIso(`${dateInput}T00:00`) : null);
 
     const body: EventInput = {
       ...form,
@@ -405,7 +414,7 @@ function EventFormDialog({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field
               label="Price (₹)"
-              error={fields.price}
+              error={fields.price ?? priceError}
               hint="Enter in Rupees; stored as paise."
             >
               {(props) => (
