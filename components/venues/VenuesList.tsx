@@ -14,9 +14,9 @@ import { useMutation } from "@/hooks/useMutation";
 import { useNow } from "@/hooks/useNow";
 import { listEvents } from "@/lib/api/events";
 import { deleteVenue, listVenues } from "@/lib/api/venues";
-import { asEnum, asText } from "@/lib/params";
+import { asText } from "@/lib/params";
 import { groupByVenue } from "@/lib/schedule";
-import { ORDERS, type AdminEvent, Venue } from "@/types";
+import type { AdminEvent, Venue } from "@/types";
 
 import VenueActivityCell from "./VenueActivityCell";
 import VenueFormModal from "./VenueFormModal";
@@ -38,8 +38,6 @@ export default function VenuesList() {
       page,
       pageSize,
       search: asText(filters.search),
-      sort: asText(filters.sort),
-      order: asEnum(filters.order, ORDERS),
     }),
   );
 
@@ -102,7 +100,9 @@ export default function VenuesList() {
       key: "name",
       header: "Venue",
       primary: true,
-      sortKey: "name",
+      // No sortKey: GET /admin/venues takes no query params, so the backend
+      // ignores sort entirely. A header that reorders nothing is worse than
+      // one that does not offer to.
       // Capped rather than left to absorb all the slack, which pushed the
       // live column out to the far right on a wide screen.
       className: "w-72",
@@ -205,9 +205,6 @@ export default function VenuesList() {
         loading={venues.loading}
         error={venues.error}
         onRetry={venues.refetch}
-        sort={venues.sort}
-        order={venues.order}
-        onToggleSort={venues.toggleSort}
         emptyTitle="No venues yet"
         emptyDescription="Add a venue before scheduling events against it."
         emptyAction={

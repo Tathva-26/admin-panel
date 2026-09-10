@@ -152,7 +152,8 @@ export default function AnnouncementsList() {
     },
     {
       key: "updatedAt",
-      sortKey: "updatedAt",
+      // Not sortable: the backend's sort enum is ['createdAt', 'title'], and
+      // asking for updatedAt comes back 422.
       header: "Updated",
       className: "w-32 text-zinc-600",
       hideOnMobile: true,
