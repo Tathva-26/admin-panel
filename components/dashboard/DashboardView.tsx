@@ -5,8 +5,8 @@ import Link from "next/link";
 
 import ErrorState from "@/components/ui/ErrorState";
 import { useApi } from "@/hooks/useApi";
-import { get } from "@/lib/api/client";
 import { getDashboard } from "@/lib/api/dashboard";
+import { listBookings } from "@/lib/api/bookings";
 import { listEvents } from "@/lib/api/events";
 import { listAnnouncements } from "@/lib/api/announcements";
 import { findEventIssues } from "@/lib/attention";
@@ -38,18 +38,19 @@ export default function DashboardView() {
 
   const announcements = useApi<ListResponse<Announcement>>(
     "dashboard:announcements",
-    () => listAnnouncements({ pageSize: 3 }),
+    () => listAnnouncements({ pageSize: 3, published: true }),
   );
 
   const bookings = useApi<ListResponse<Booking>>(
     "dashboard:bookings",
-    () => get<ListResponse<Booking>>("/admin/bookings", { pageSize: 3 }),
+    () => listBookings({ pageSize: 3, status: "PENDING" }),
   );
 
   const refetchStats = stats.refetch;
   const refetchEvents = events.refetch;
   const refetchAttentionEvents = attentionEvents.refetch;
   const refetchAnnouncements = announcements.refetch;
+  const refetchBookings = bookings.refetch;
 
   useEffect(() => {
     const refresh = () => {
@@ -57,11 +58,18 @@ export default function DashboardView() {
       refetchEvents();
       refetchAttentionEvents();
       refetchAnnouncements();
+      refetchBookings();
     };
 
     window.addEventListener(DASHBOARD_REFRESH_EVENT, refresh);
     return () => window.removeEventListener(DASHBOARD_REFRESH_EVENT, refresh);
-  }, [refetchStats, refetchEvents, refetchAttentionEvents, refetchAnnouncements]);
+  }, [
+    refetchStats,
+    refetchEvents,
+    refetchAttentionEvents,
+    refetchAnnouncements,
+    refetchBookings,
+  ]);
 
   const issues = useMemo(
     () => findEventIssues(attentionEvents.data?.items ?? []),
@@ -128,11 +136,17 @@ export default function DashboardView() {
                   Events Overview
                 </h3>
                 <p className="text-xs text-zinc-600 font-medium mt-0.5">
-                  Published:{" "}
-                  <span className="font-bold text-zinc-900">
-                    {statsData.events.published}
-                  </span>
-                  {" "}/ {statsData.events.total} Events
+                  {stats.loading ? (
+                    <span className="text-zinc-400">Loading...</span>
+                  ) : (
+                    <>
+                      Published:{" "}
+                      <span className="font-bold text-zinc-900">
+                        {statsData.events.published}
+                      </span>
+                      {" "}/ {statsData.events.total} Events
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -147,11 +161,17 @@ export default function DashboardView() {
                   Bookings Overview
                 </h3>
                 <p className="text-xs text-zinc-600 font-medium mt-0.5">
-                  Confirmed:{" "}
-                  <span className="font-bold text-zinc-900">
-                    {statsData.bookings.confirmed}
-                  </span>
-                  {" "}/ {statsData.bookings.total} Bookings
+                  {stats.loading ? (
+                    <span className="text-zinc-400">Loading...</span>
+                  ) : (
+                    <>
+                      Confirmed:{" "}
+                      <span className="font-bold text-zinc-900">
+                        {statsData.bookings.confirmed}
+                      </span>
+                      {" "}/ {statsData.bookings.total} Bookings
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -180,6 +200,8 @@ export default function DashboardView() {
                   </div>
                 ))}
               </div>
+            ) : events.error ? (
+              <ErrorState error={events.error} onRetry={events.refetch} />
             ) : eventsList.length === 0 ? (
               <p className="py-8 text-center text-xs font-medium text-zinc-500">
                 No events created yet.
@@ -249,9 +271,26 @@ export default function DashboardView() {
                 <h2 className="text-sm font-bold text-zinc-900">
                   Announcements
                 </h2>
+                <Link
+                  href="/announcements"
+                  className="text-xs font-bold text-zinc-900 hover:underline flex items-center gap-1"
+                >
+                  View all &gt;
+                </Link>
               </div>
 
-              {announcementsList.length === 0 ? (
+              {announcements.loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="h-8 animate-pulse rounded bg-zinc-100" />
+                  ))}
+                </div>
+              ) : announcements.error ? (
+                <ErrorState
+                  error={announcements.error}
+                  onRetry={announcements.refetch}
+                />
+              ) : announcementsList.length === 0 ? (
                 <p className="py-6 text-center text-xs font-medium text-zinc-500">
                   No announcements published.
                 </p>
@@ -292,11 +331,23 @@ export default function DashboardView() {
                 <h2 className="text-sm font-bold text-zinc-900">
                   Your Pending Bookings
                 </h2>
-                <button className="text-zinc-400 hover:text-zinc-600 text-xs font-bold tracking-widest p-1">
-                </button>
+                <Link
+                  href="/bookings"
+                  className="text-xs font-bold text-zinc-900 hover:underline flex items-center gap-1"
+                >
+                  View all &gt;
+                </Link>
               </div>
 
-              {bookingsList.length === 0 ? (
+              {bookings.loading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div key={index} className="h-8 animate-pulse rounded bg-zinc-100" />
+                  ))}
+                </div>
+              ) : bookings.error ? (
+                <ErrorState error={bookings.error} onRetry={bookings.refetch} />
+              ) : bookingsList.length === 0 ? (
                 <p className="py-6 text-center text-xs font-medium text-zinc-500">
                   No bookings found.
                 </p>
@@ -363,35 +414,46 @@ export default function DashboardView() {
               Ticket Selling
             </h2>
 
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Registered Users", value: statsData.users },
-                { label: "Draft Events", value: statsData.events.drafts },
-                { label: "Failed Bookings", value: statsData.bookings.failed },
-              ].map((stat) => (
-                <div key={stat.label} className="space-y-2.5">
-                  <p className="text-[11px] text-zinc-600 font-medium truncate">
-                    {stat.label}
-                  </p>
-                  <div className="flex gap-1">
-                    {String(stat.value)
-                      .padStart(2, "0")
-                      .split("")
-                      .map((digit, i) => (
-                        <div
-                          key={i}
-                          className="relative w-11 h-14 rounded-sm bg-zinc-900 overflow-hidden flex items-center justify-center"
-                        >
-                          <span className="text-white text-3xl font-bold font-mono">
-                            {digit}
-                          </span>
-                          <div className="absolute left-0 right-0 top-1/2 h-px bg-black/50" />
-                        </div>
-                      ))}
+            {stats.loading ? (
+              <div className="grid grid-cols-3 gap-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="space-y-2.5">
+                    <div className="h-3 w-3/4 animate-pulse rounded bg-zinc-100" />
+                    <div className="h-14 animate-pulse rounded-sm bg-zinc-100" />
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                {[
+                  { label: "Registered Users", value: statsData.users },
+                  { label: "Draft Events", value: statsData.events.drafts },
+                  { label: "Failed Bookings", value: statsData.bookings.failed },
+                ].map((stat) => (
+                  <div key={stat.label} className="space-y-2.5">
+                    <p className="text-[11px] text-zinc-600 font-medium truncate">
+                      {stat.label}
+                    </p>
+                    <div className="flex gap-1">
+                      {String(stat.value)
+                        .padStart(2, "0")
+                        .split("")
+                        .map((digit, i) => (
+                          <div
+                            key={i}
+                            className="relative w-11 h-14 rounded-sm bg-zinc-900 overflow-hidden flex items-center justify-center"
+                          >
+                            <span className="text-white text-3xl font-bold font-mono">
+                              {digit}
+                            </span>
+                            <div className="absolute left-0 right-0 top-1/2 h-px bg-black/50" />
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
