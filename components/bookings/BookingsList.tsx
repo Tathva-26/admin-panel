@@ -12,7 +12,7 @@ import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { listBookings } from "@/lib/api/bookings";
 import { useList } from "@/hooks/useList";
-import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 import { asEnum, asNumber, asText } from "@/lib/params";
 import {
@@ -48,14 +48,20 @@ const EXPORT_HEADERS = [
   "Total (INR)",
   "Currency",
   "Booked",
+  "Room",
+  "Check in",
+  "Check out",
+  "Nights",
+  "Meals (veg)",
+  "Meals (non-veg)",
 ];
 
 const toExportRow = (booking: Booking): CsvCell[] => [
   booking.bookingUid,
   booking.status,
   booking.kind,
-  booking.user.name,
-  booking.user.email,
+  booking.user?.name ?? "",
+  booking.user?.email ?? "",
   booking.event?.heading ?? "",
   booking.qty,
   // Rupees as a plain decimal, which is what a spreadsheet can sum.
@@ -65,6 +71,20 @@ const toExportRow = (booking: Booking): CsvCell[] => [
   paiseToRupeeInput(booking.amountTotal),
   booking.currency,
   formatDateTime(booking.createdAt),
+  booking.accommodation?.room ?? "",
+  booking.accommodation?.startDate ?? "",
+  booking.accommodation?.endDate ?? "",
+  booking.accommodation?.nights ?? "",
+  booking.accommodation
+    ? booking.accommodation.foodDay24Veg +
+      booking.accommodation.foodDay25Veg +
+      booking.accommodation.foodDay26Veg
+    : "",
+  booking.accommodation
+    ? booking.accommodation.foodDay24NonVeg +
+      booking.accommodation.foodDay25NonVeg +
+      booking.accommodation.foodDay26NonVeg
+    : "",
 ];
 
 export default function BookingsList() {
@@ -140,16 +160,35 @@ export default function BookingsList() {
       header: "User",
       cell: (booking) => (
         <div className="min-w-0">
-          <p className="truncate text-zinc-900">{booking.user.name}</p>
-          <p className="truncate text-xs text-zinc-500">{booking.user.email}</p>
+          {/* A booking with no user is degenerate data, but it should render as
+              a gap rather than take the page down. */}
+          <p className="truncate text-zinc-900">
+            {booking.user?.name ?? "—"}
+          </p>
+          <p className="truncate text-xs text-zinc-500">
+            {booking.user?.email ?? ""}
+          </p>
         </div>
       ),
     },
     {
       key: "event",
-      header: "Event",
+      header: "Event / stay",
       className: "text-zinc-600",
-      cell: (booking) => booking.event?.heading ?? "—",
+      cell: (booking) =>
+        booking.accommodation ? (
+          <div className="min-w-0">
+            <p className="truncate text-zinc-900">
+              {booking.accommodation.room}
+            </p>
+            <p className="numeric truncate text-xs text-zinc-500">
+              {formatDate(booking.accommodation.startDate)} &rarr;{" "}
+              {formatDate(booking.accommodation.endDate)}
+            </p>
+          </div>
+        ) : (
+          (booking.event?.heading ?? "—")
+        ),
     },
     {
       key: "kind",
@@ -196,7 +235,7 @@ export default function BookingsList() {
       cell: (booking) => (
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={() => setEditing(booking)}>
-            Status
+            View
           </Button>
         </div>
       ),

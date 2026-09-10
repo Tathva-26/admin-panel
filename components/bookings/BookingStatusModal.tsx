@@ -9,8 +9,10 @@ import { Select } from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { useMutation } from "@/hooks/useMutation";
 import { updateBookingStatus } from "@/lib/api/bookings";
-import { formatInr } from "@/lib/format";
-import { bookingStatusLabel } from "@/lib/labels";
+import { formatDateTime, formatInr } from "@/lib/format";
+import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
+
+import AccommodationPanel from "./AccommodationPanel";
 import { BOOKING_STATUSES, type Booking, type BookingStatus } from "@/types";
 
 /**
@@ -50,7 +52,7 @@ export default function BookingStatusModal({
     <Modal
       open
       onClose={update.loading ? () => {} : onClose}
-      title="Change booking status"
+      title="Booking"
       description={booking.bookingUid}
       footer={
         <>
@@ -80,7 +82,12 @@ export default function BookingStatusModal({
           <dl className="grid grid-cols-2 gap-y-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm">
             <dt className="text-zinc-500">Booked by</dt>
             <dd className="truncate text-right text-zinc-900">
-              {booking.user.name}
+              {booking.user?.name ?? "—"}
+            </dd>
+
+            <dt className="text-zinc-500">Kind</dt>
+            <dd className="text-right text-zinc-900">
+              {bookingKindLabel(booking.kind)}
             </dd>
 
             <dt className="text-zinc-500">Event</dt>
@@ -93,11 +100,33 @@ export default function BookingStatusModal({
               {formatInr(booking.amountTotal)}
             </dd>
 
+            {/* When money actually cleared, which is not when the booking was
+                made — the gap is the whole reason PENDING exists. */}
+            <dt className="text-zinc-500">Paid at</dt>
+            <dd className="numeric text-right text-zinc-900">
+              {booking.paidAt ? formatDateTime(booking.paidAt) : "—"}
+            </dd>
+
             <dt className="text-zinc-500">Current</dt>
             <dd className="text-right">
               <BookingStatusBadge status={booking.status} />
             </dd>
           </dl>
+
+          {booking.accommodation ? (
+            <AccommodationPanel accommodation={booking.accommodation} />
+          ) : null}
+
+          {booking.ticketUrl ? (
+            <a
+              href={booking.ticketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-xs text-blue-600 underline-offset-2 hover:underline"
+            >
+              Open ticket
+            </a>
+          ) : null}
 
           <Field
             label="New status"

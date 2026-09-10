@@ -146,7 +146,13 @@ export default function CommandPalette({
           next.push({
             id: `booking:${booking.bookingUid}`,
             label: booking.bookingUid,
-            hint: `${booking.user.name} · ${formatInr(booking.amountTotal)} · ${bookingStatusLabel(booking.status)}`,
+            hint: [
+              booking.user?.name,
+              formatInr(booking.amountTotal),
+              bookingStatusLabel(booking.status),
+            ]
+              .filter(Boolean)
+              .join(" · "),
             group: "Bookings",
             href: `/bookings?search=${encodeURIComponent(booking.bookingUid)}`,
           });
