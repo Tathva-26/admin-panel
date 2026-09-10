@@ -36,6 +36,7 @@ export default function AnnouncementsList() {
     listAnnouncements({
       page,
       pageSize,
+      search: asText(filters.search),
       published: asBool(filters.published),
       sort: asText(filters.sort),
       order: asEnum(filters.order, ORDERS),

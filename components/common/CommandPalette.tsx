@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { listAnnouncements } from "@/lib/api/announcements";
@@ -26,6 +26,8 @@ const MIN_SEARCH_LENGTH = 2;
 
 /** Per resource. Enough to find the thing, few enough to still scan the list. */
 const MAX_PER_GROUP = 4;
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function CommandPalette({
   open,
@@ -39,20 +41,72 @@ export default function CommandPalette({
   const [activeIndex, setActiveIndex] = useState(0);
   const [results, setResults] = useState<PaletteItem[]>([]);
   const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => {
+    onOpenChange(false);
+    setQuery("");
+    setActiveIndex(0);
+    setResults([]);
+    setSearching(false);
+  }, [onOpenChange]);
 
   // Cmd+K on a Mac, Ctrl+K everywhere else. Registered once, globally.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        onOpenChange(!open);
+        if (open) close();
+        else onOpenChange(true);
       }
-      if (event.key === "Escape") onOpenChange(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+      }
     };
 
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onOpenChange]);
+  }, [close, onOpenChange, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    inputRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [],
+      ).filter((node) => node.offsetParent !== null);
+
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable.at(-1)!;
+      const current = document.activeElement;
+
+      if (event.shiftKey && current === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [open]);
 
   /*
    * Searches every resource at once, not just events — the button says "search
@@ -190,13 +244,6 @@ export default function CommandPalette({
   // cursor cannot leave the selection pointing past the end of the list.
   const active = Math.min(activeIndex, Math.max(items.length - 1, 0));
 
-  const close = () => {
-    onOpenChange(false);
-    setQuery("");
-    setActiveIndex(0);
-    setResults([]);
-  };
-
   const go = (item: PaletteItem | undefined) => {
     if (!item) return;
     router.push(item.href);
@@ -243,13 +290,14 @@ export default function CommandPalette({
       />
 
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Search"
         className="relative flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg"
       >
         <input
-          autoFocus
+          ref={inputRef}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);

@@ -96,7 +96,11 @@ export default function EventsList({
 
   const isNewParam = searchParams.get("new") === "true";
   const eventIdParam = searchParams.get("eventId");
-  const targetEventId = eventIdParam ? Number(eventIdParam) : null;
+  const parsedEventId = eventIdParam ? Number(eventIdParam) : NaN;
+  const targetEventId =
+    Number.isInteger(parsedEventId) && parsedEventId > 0
+      ? parsedEventId
+      : null;
   const modalOpen = formOpen || createOpen || isNewParam || !!targetEventId;
 
   const closeForm = useCallback(() => {

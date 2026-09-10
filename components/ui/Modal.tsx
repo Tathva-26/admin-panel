@@ -13,7 +13,7 @@ interface ModalProps {
 }
 
 const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]):not([data-modal-backdrop]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export default function Modal({
   open,
@@ -24,6 +24,11 @@ export default function Modal({
   footer,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -43,7 +48,7 @@ export default function Modal({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -83,7 +88,7 @@ export default function Modal({
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -92,6 +97,7 @@ export default function Modal({
       <button
         type="button"
         aria-label="Close"
+        data-modal-backdrop
         onClick={onClose}
         className="absolute inset-0 h-full w-full cursor-default bg-zinc-900/40"
       />
