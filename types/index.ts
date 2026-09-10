@@ -237,6 +237,40 @@ export interface BookingEvent {
   type: EventType;
 }
 
+/**
+ * The accommodation row attached to a booking of kind ACCOMMODATION.
+ *
+ * Mirrors the backend's AccommodationBooking, which is returned raw. Note the
+ * dates are plain `YYYY-MM-DD` strings rather than timestamps — they are stay
+ * dates, not instants, so they are not put through the IST conversion.
+ *
+ * Meals are counted per fest day and split veg/non-veg. The backend names them
+ * after the date (24th, 25th, 26th) rather than by index.
+ */
+export interface Accommodation {
+  id: number;
+  bookingId: number;
+  userId: number;
+  eventId: number;
+  /** Free text, uppercased by the backend — typically MALE or FEMALE. */
+  gender: string;
+  /** Free text, uppercased by the backend — the room or block identifier. */
+  room: string;
+  /** `YYYY-MM-DD`. */
+  startDate: string;
+  /** `YYYY-MM-DD`. */
+  endDate: string;
+  nights: number;
+  foodDay24Veg: number;
+  foodDay24NonVeg: number;
+  foodDay25Veg: number;
+  foodDay25NonVeg: number;
+  foodDay26Veg: number;
+  foodDay26NonVeg: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Booking {
   bookingUid: string;
   kind: BookingKind;
@@ -248,10 +282,16 @@ export interface Booking {
   amountTax: number;
   amountTotal: number;
   currency: string;
-  user: BookingUser;
+  /** Null-able: the backend emits null when the relation is missing. */
+  user: BookingUser | null;
   event: BookingEvent | null;
-  /** Present on accommodation bookings; shape not modelled until we show it. */
-  accommodation: unknown;
+  /** Present on bookings of kind ACCOMMODATION, null otherwise. */
+  accommodation: Accommodation | null;
+  /** Set once a ticket has been generated for a confirmed booking. */
+  ticketUrl: string | null;
+  providerPaymentId: string | null;
+  /** When payment actually cleared, as opposed to when the booking was made. */
+  paidAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
