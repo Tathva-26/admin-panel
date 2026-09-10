@@ -119,7 +119,7 @@ export default function AnnouncementsList() {
     {
       key: "id",
       header: "ID",
-      className: "numeric w-16 text-zinc-400",
+      className: "numeric w-16 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => a.id,
     },
@@ -130,8 +130,8 @@ export default function AnnouncementsList() {
       primary: true,
       cell: (a) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{a.title}</p>
-          <p className="truncate text-xs text-zinc-500 line-clamp-1">
+          <p className="truncate font-medium text-foreground">{a.title}</p>
+          <p className="truncate text-xs text-muted-foreground line-clamp-1">
             {a.content}
           </p>
         </div>
@@ -147,7 +147,7 @@ export default function AnnouncementsList() {
       key: "createdAt",
       sortKey: "createdAt",
       header: "Created",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => formatDate(a.createdAt),
     },
@@ -155,7 +155,7 @@ export default function AnnouncementsList() {
       key: "updatedAt",
       sortKey: "updatedAt",
       header: "Updated",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => formatDate(a.updatedAt),
     },
@@ -201,8 +201,8 @@ export default function AnnouncementsList() {
         <div
           className={
             outcome.failures.length > 0
-              ? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-              : "rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+              ? "rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-sm text-warning"
+              : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
           <p>

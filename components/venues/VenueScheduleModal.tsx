@@ -48,7 +48,7 @@ export default function VenueScheduleModal({
       }
     >
       {slots.length === 0 && undated.length === 0 ? (
-        <p className="py-6 text-center text-sm text-zinc-500">
+        <p className="py-6 text-center text-sm text-muted-foreground">
           Nothing is scheduled at this venue yet.
         </p>
       ) : (
@@ -62,25 +62,25 @@ export default function VenueScheduleModal({
                 className={cn(
                   "flex gap-3 rounded-md border px-3 py-2",
                   state === "live"
-                    ? "border-green-200 bg-green-50"
-                    : "border-zinc-200",
+                    ? "border-success/40 bg-success/15"
+                    : "border-border",
                   state === "past" && "opacity-55",
                 )}
               >
-                <div className="numeric w-28 shrink-0 text-xs text-zinc-500">
+                <div className="numeric w-28 shrink-0 text-xs text-muted-foreground">
                   {formatDateTime(slot.start.toISOString())}
                   {slot.end ? (
-                    <span className="block text-zinc-400">
+                    <span className="block text-muted-foreground">
                       to {formatTime(slot.end.toISOString())}
                     </span>
                   ) : null}
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-900">
+                  <p className="truncate text-sm font-medium text-foreground">
                     {slot.event.heading}
                   </p>
-                  <p className="text-xs text-zinc-500 capitalize">
+                  <p className="text-xs text-muted-foreground capitalize">
                     {slot.event.type}
                   </p>
                 </div>
@@ -88,12 +88,12 @@ export default function VenueScheduleModal({
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <PublishedBadge published={slot.event.published} />
                   {state === "upcoming" ? (
-                    <span className="text-[11px] text-zinc-500">
+                    <span className="text-[11px] text-muted-foreground">
                       {relativeFromNow(slot.start, now)}
                     </span>
                   ) : null}
                   {state === "live" ? (
-                    <span className="text-[11px] font-medium text-green-700">
+                    <span className="text-[11px] font-medium text-success">
                       On now
                     </span>
                   ) : null}
@@ -107,12 +107,12 @@ export default function VenueScheduleModal({
           {undated.map((event) => (
             <li
               key={event.id}
-              className="flex items-center gap-3 rounded-md border border-dashed border-amber-300 bg-amber-50/60 px-3 py-2"
+              className="flex items-center gap-3 rounded-md border border-dashed border-warning/40 bg-warning/15 px-3 py-2"
             >
-              <span className="w-28 shrink-0 text-xs text-amber-700">
+              <span className="w-28 shrink-0 text-xs text-warning">
                 No start time
               </span>
-              <p className="min-w-0 flex-1 truncate text-sm text-zinc-900">
+              <p className="min-w-0 flex-1 truncate text-sm text-foreground">
                 {event.heading}
               </p>
               <PublishedBadge published={event.published} />

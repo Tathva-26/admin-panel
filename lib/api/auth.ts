@@ -1,11 +1,10 @@
 import type { AdminUser } from "@/types";
-import { get } from "./client";
+import { API_ORIGIN, get } from "./client";
 
 export const getMe = () => get<AdminUser>("/admin/me", undefined, "user");
 
 export const getGoogleAuthUrl = () => {
-  const origin = process.env.NEXT_PUBLIC_API_URL ?? "";
-  return `${origin}/api/auth/google`;
+  return `${API_ORIGIN}/api/auth/google`;
 };
 
 export const logout = () => {

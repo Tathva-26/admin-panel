@@ -113,8 +113,8 @@ export default function UsersList() {
         <div className="flex min-w-0 items-center gap-2.5">
           <Avatar name={user.name} seed={user.email} />
           <div className="min-w-0">
-            <p className="truncate font-medium text-zinc-900">{user.name}</p>
-            <p className="truncate text-xs text-zinc-500">{user.email}</p>
+            <p className="truncate font-medium text-foreground">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
         </div>
       ),
@@ -122,26 +122,26 @@ export default function UsersList() {
     {
       key: "phone",
       header: "Phone",
-      className: "numeric w-32 text-zinc-600",
+      className: "numeric w-32 text-muted-foreground",
       cell: (user) => user.phone || "—",
     },
     {
       key: "college",
       header: "College",
-      className: "text-zinc-600",
+      className: "text-muted-foreground",
       cell: (user) => user.college || "—",
     },
     {
       key: "district",
       header: "District",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (user) => user.district || "—",
     },
     {
       key: "referral",
       header: "Referral",
-      className: "numeric w-28 text-zinc-500",
+      className: "numeric w-28 text-muted-foreground",
       cell: (user) => user.referral,
     },
     {
@@ -154,7 +154,7 @@ export default function UsersList() {
       key: "createdAt",
       sortKey: "createdAt",
       header: "Joined",
-      className: "numeric w-32 text-zinc-500",
+      className: "numeric w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (user) => formatDate(user.createdAt),
     },
@@ -218,12 +218,12 @@ export default function UsersList() {
       </div>
 
       {csv.error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Export failed. {csv.error.message}
         </p>
       ) : null}
       {csv.truncated ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Export stopped at 2000 rows. Narrow the filters to get the rest.
         </p>
       ) : null}
@@ -232,7 +232,7 @@ export default function UsersList() {
         <DistributionBar
           segments={roleSplit}
           trailing={
-            <span className="numeric text-xs text-zinc-500">
+            <span className="numeric text-xs text-muted-foreground">
               {users.total} total
             </span>
           }

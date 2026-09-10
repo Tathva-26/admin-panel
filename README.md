@@ -18,6 +18,11 @@ Open [http://localhost:3000](http://localhost:3000).
 Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without `/api` — the API
 client appends that itself.
 
+For temporary frontend-only work, set `NEXT_PUBLIC_MOCK_AUTH=true` in `.env.local`.
+This enables the temporary mock admin login and the in-memory data in `api/` for events,
+venues, announcements, users, bookings and dashboard stats. Mock changes reset on reload.
+Remove that variable to return to the real backend.
+
 ## Sections
 
 | Section | What it does |
@@ -49,6 +54,7 @@ lib/
   schedule.ts   what is on at a venue, and when
   attention.ts  dashboard checks for events needing review
 types/          API types
+api/            temporary in-memory mock data and request handler
 ```
 
 ## Scripts

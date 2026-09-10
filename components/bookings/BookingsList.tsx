@@ -132,7 +132,7 @@ export default function BookingsList() {
       primary: true,
       className: "numeric",
       cell: (booking) => (
-        <span className="font-medium text-zinc-900">{booking.bookingUid}</span>
+        <span className="font-medium text-foreground">{booking.bookingUid}</span>
       ),
     },
     {
@@ -140,21 +140,21 @@ export default function BookingsList() {
       header: "User",
       cell: (booking) => (
         <div className="min-w-0">
-          <p className="truncate text-zinc-900">{booking.user.name}</p>
-          <p className="truncate text-xs text-zinc-500">{booking.user.email}</p>
+          <p className="truncate text-foreground">{booking.user.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{booking.user.email}</p>
         </div>
       ),
     },
     {
       key: "event",
       header: "Event",
-      className: "text-zinc-600",
+      className: "text-muted-foreground",
       cell: (booking) => booking.event?.heading ?? "—",
     },
     {
       key: "kind",
       header: "Kind",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (booking) => bookingKindLabel(booking.kind),
     },
@@ -162,7 +162,7 @@ export default function BookingsList() {
       key: "qty",
       header: "Qty",
       align: "right",
-      className: "numeric w-16 text-zinc-600",
+      className: "numeric w-16 text-muted-foreground",
       hideOnMobile: true,
       cell: (booking) => booking.qty,
     },
@@ -184,7 +184,7 @@ export default function BookingsList() {
       key: "createdAt",
       sortKey: "createdAt",
       header: "Booked",
-      className: "numeric w-48 text-zinc-500",
+      className: "numeric w-48 text-muted-foreground",
       hideOnMobile: true,
       cell: (booking) => formatDateTime(booking.createdAt),
     },
@@ -254,19 +254,19 @@ export default function BookingsList() {
       </div>
 
       {csv.error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Export failed. {csv.error.message}
         </p>
       ) : null}
       {csv.truncated ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Export stopped at 2000 rows. Narrow the filters to get the rest.
         </p>
       ) : null}
 
       {/* Only appears when arrived at via a link; clearing it is the way out. */}
       {eventFilter !== undefined ? (
-        <div className="flex items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-600">
+        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-xs text-muted-foreground">
           <span className="numeric">Filtered to event #{eventFilter}</span>
           <Button
             size="sm"
@@ -283,7 +283,7 @@ export default function BookingsList() {
         <DistributionBar
           segments={statusSplit}
           trailing={
-            <span className="numeric text-xs text-zinc-500">
+            <span className="numeric text-xs text-muted-foreground">
               {formatInr(confirmedTotal)} confirmed &middot; this page
             </span>
           }

@@ -31,18 +31,18 @@ export default function Field({
     <div>
       <label
         htmlFor={id}
-        className="mb-1 block text-sm font-medium text-zinc-700"
+        className="mb-1 block text-sm font-medium text-foreground"
       >
         {label}
-        {required ? <span className="ml-0.5 text-red-600">*</span> : null}
+        {required ? <span className="ml-0.5 text-destructive">*</span> : null}
       </label>
 
       {children({ id, ...(error ? { "aria-invalid": true as const } : {}) })}
 
       {error ? (
-        <p className="mt-1 text-xs text-red-600">{error}</p>
+        <p className="mt-1 text-xs text-destructive">{error}</p>
       ) : hint ? (
-        <p className="mt-1 text-xs text-zinc-500">{hint}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
       ) : null}
     </div>
   );

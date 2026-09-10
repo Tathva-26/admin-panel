@@ -27,7 +27,7 @@ export default function VenuesPage() {
       {/* VenuesList reads filters from the URL, so it needs a boundary. */}
       <Suspense
         fallback={
-          <div className="flex justify-center py-16 text-zinc-400">
+          <div className="flex justify-center py-16 text-muted-foreground">
             <Spinner />
           </div>
         }

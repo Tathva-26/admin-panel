@@ -26,7 +26,7 @@ export default function AnnouncementsPage() {
       />
       <Suspense
         fallback={
-          <div className="flex justify-center py-16 text-zinc-400">
+          <div className="flex justify-center py-16 text-muted-foreground">
             <Spinner />
           </div>
         }
