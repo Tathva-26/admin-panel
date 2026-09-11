@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
+import { useEffect } from "react";
 import Button from "@/components/ui/Button";
 import ErrorState from "@/components/ui/ErrorState";
 import Field from "@/components/ui/Field";
@@ -102,7 +102,11 @@ function AnnouncementFormDialog({
   }
 
   const fields = mutation.fields;
-
+  useEffect(() => {
+    if (mutation.error?.status === 409) {
+      onSaved();
+    }
+  }, [mutation.error, onSaved]);
   return (
     <Modal
       open={true}

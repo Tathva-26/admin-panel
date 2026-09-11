@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
@@ -182,7 +182,11 @@ function EventFormDialog({
     const endIso = dateTimeInputToIso(`${dateInput}T${newTime}`);
     set("endTime", endIso);
   }
-
+    useEffect(() => {
+    if (mutation.error?.status === 409) {
+      onSaved();
+    }
+    }, [mutation.error, onSaved]);
   async function handleSubmit() {
     const paise = rupeeInputToPaise(priceInput);
     if (paise === null) {

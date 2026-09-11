@@ -1,22 +1,15 @@
 "use client";
-
+import { getGoogleAuthUrl } from "@/lib/api/auth";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Button from "@/components/ui/Button";
-import { startGoogleAuth } from "@/lib/api/auth";
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const errorParam = searchParams.get("error");
 
-  const handleLogin = async () => {
-    try {
-      const url = await startGoogleAuth();
-      window.location.href = url;
-    } catch (err) {
-      console.error("Failed to start Google sign-in", err);
-      window.location.href = "/login?error=authentication_failed";
-    }
+  const handleLogin = () => {
+    window.location.href = getGoogleAuthUrl();
   };
 
   return (
