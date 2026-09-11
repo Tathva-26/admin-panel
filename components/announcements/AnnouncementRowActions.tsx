@@ -97,10 +97,10 @@ export default function AnnouncementRowActions({
         </Button>
 
         {menuOpen ? (
-          <div className="absolute right-0 top-full z-30 mt-1 w-40 rounded-md border border-zinc-200 bg-white py-1 shadow-lg">
+          <div className="absolute right-0 top-full z-30 mt-1 w-40 rounded-md border border-border bg-popover py-1 shadow-lg">
             <button
               type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-zinc-700 hover:bg-zinc-50"
+              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted"
               onClick={() => {
                 setMenuOpen(false);
                 onEdit(announcement);
@@ -110,7 +110,7 @@ export default function AnnouncementRowActions({
             </button>
             <button
               type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
               disabled={busy}
               onClick={handlePublishToggle}
             >
@@ -118,7 +118,7 @@ export default function AnnouncementRowActions({
             </button>
             <button
               type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
               onClick={() => {
                 setMenuOpen(false);
                 remove.reset();

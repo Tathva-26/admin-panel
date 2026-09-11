@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -12,6 +12,9 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
+const FOCUSABLE =
+  'a[href], button:not([disabled]):not([data-modal-backdrop]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export default function Modal({
   open,
   onClose,
@@ -20,11 +23,59 @@ export default function Modal({
   children,
   footer,
 }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!open) return;
 
+    // Where focus came from, so it can be handed back on close rather than
+    // dumped at the top of the document.
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    const focusable = () =>
+      Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [],
+      ).filter((node) => node.offsetParent !== null);
+
+    // Focus the first control rather than leaving it on whatever opened the
+    // dialog, which is behind the overlay and unreachable.
+    focusable()[0]?.focus();
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        onCloseRef.current();
+        return;
+      }
+
+      /*
+       * Tab was escaping to the page behind the overlay — visually covered,
+       * still focusable, and impossible to see where the cursor had gone. This
+       * cycles focus within the dialog instead.
+       */
+      if (event.key !== "Tab") return;
+
+      const nodes = focusable();
+      if (nodes.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = nodes[0];
+      const last = nodes.at(-1)!;
+      const current = document.activeElement;
+
+      if (event.shiftKey && current === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
 
     document.addEventListener("keydown", onKeyDown);
@@ -35,8 +86,9 @@ export default function Modal({
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -45,8 +97,9 @@ export default function Modal({
       <button
         type="button"
         aria-label="Close"
+        data-modal-backdrop
         onClick={onClose}
-        className="absolute inset-0 h-full w-full cursor-default bg-zinc-900/40"
+        className="absolute inset-0 h-full w-full cursor-default bg-background/80"
       />
 
       {/*
@@ -54,15 +107,16 @@ export default function Modal({
         phone cannot push its own buttons off screen.
       */}
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-md border border-zinc-200 bg-white shadow-lg"
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-md border border-border bg-popover shadow-lg"
       >
-        <div className="shrink-0 border-b border-zinc-200 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
+        <div className="shrink-0 border-b border-border px-5 py-3.5">
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           {description ? (
-            <p className="mt-0.5 text-sm text-zinc-500">{description}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
           ) : null}
         </div>
 
@@ -71,7 +125,7 @@ export default function Modal({
         ) : null}
 
         {footer ? (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-zinc-200 px-5 py-3">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-3">
             {footer}
           </div>
         ) : null}

@@ -6,8 +6,8 @@
  */
 export default function NotBuiltYet() {
   return (
-    <div className="rounded-lg border border-dashed border-zinc-300 bg-white px-6 py-12 text-center">
-      <p className="text-sm text-zinc-500">Not built yet</p>
+    <div className="rounded-lg border border-dashed border-border bg-card px-6 py-12 text-center">
+      <p className="text-sm text-muted-foreground">Not built yet</p>
     </div>
   );
 }

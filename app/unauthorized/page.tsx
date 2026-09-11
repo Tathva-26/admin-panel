@@ -7,9 +7,9 @@ export default function UnauthorizedPage() {
   const { logout, user } = useAuth();
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-zinc-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 text-center shadow-sm">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-warning/15 text-warning">
           <svg
             className="h-6 w-6"
             fill="none"
@@ -25,15 +25,15 @@ export default function UnauthorizedPage() {
           </svg>
         </div>
 
-        <h1 className="mt-4 text-xl font-bold tracking-tight text-zinc-900">
+        <h1 className="mt-4 text-xl font-bold tracking-tight text-foreground">
           Access Denied (403)
         </h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           You do not have administrator permissions to access the Tathva panel.
         </p>
 
         {user ? (
-          <div className="mt-4 rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600">
+          <div className="mt-4 rounded-md border border-border bg-muted p-3 text-xs text-muted-foreground">
             Signed in as: <span className="font-semibold">{user.email}</span> (Role: {user.role})
           </div>
         ) : null}

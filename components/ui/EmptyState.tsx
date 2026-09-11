@@ -11,9 +11,9 @@ export default function EmptyState({
 }) {
   return (
     <div className="px-6 py-14 text-center">
-      <p className="text-sm font-medium text-zinc-700">{title}</p>
+      <p className="text-sm font-medium text-foreground">{title}</p>
       {description ? (
-        <p className="mx-auto mt-1 max-w-sm text-sm text-zinc-500">
+        <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
           {description}
         </p>
       ) : null}

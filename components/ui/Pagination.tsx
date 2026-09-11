@@ -23,8 +23,8 @@ export default function Pagination({
   const last = Math.min(page * pageSize, total);
 
   return (
-    <div className="flex flex-col-reverse gap-2 border-t border-zinc-200 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-xs text-zinc-500">
+    <div className="flex flex-col-reverse gap-2 border-t border-border px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-muted-foreground">
         <span className="numeric">
           {first}&ndash;{last}
         </span>{" "}
@@ -39,7 +39,7 @@ export default function Pagination({
         >
           Previous
         </Button>
-        <span className="numeric text-xs text-zinc-500">
+        <span className="numeric text-xs text-muted-foreground">
           {page} / {totalPages}
         </span>
         <Button

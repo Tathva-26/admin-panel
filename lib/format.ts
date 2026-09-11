@@ -71,6 +71,27 @@ export function formatDateTime(iso: string | null | undefined): string {
   }).format(date);
 }
 
+/**
+ * Time only, for "until 12:30 pm".
+ *
+ * A real formatter rather than splitting formatDateTime's output on ", " —
+ * that depends on the exact shape Intl happens to produce, and turns into
+ * silently wrong output the moment it changes.
+ */
+export function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
 /** Date only, for columns where the time is noise. */
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
