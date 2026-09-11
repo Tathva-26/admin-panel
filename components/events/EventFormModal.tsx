@@ -353,15 +353,102 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label='Picture URL' error={fields.picture}>
+          <Field label='Picture' error={fields.picture}>
             {(props) => (
-              <Input
+              <div
                 {...props}
-                type='url'
-                value={form.picture ?? ''}
-                onChange={(e) => set('picture', e.target.value || null)}
-                placeholder='https://example.com/image.jpg'
-              />
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove(
+                    'border-blue-500',
+                    'bg-blue-50',
+                  )
+                }}
+                onDrop={async (e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove(
+                    'border-blue-500',
+                    'bg-blue-50',
+                  )
+
+                  const file = e.dataTransfer.files?.[0]
+
+                  if (!file || !file.type.startsWith('image/')) {
+                    return
+                  }
+
+                  // Upload the image here
+                  const formData = new FormData()
+                  formData.append('file', file)
+
+                  const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                  })
+
+                  if (!res.ok) {
+                    return
+                  }
+
+                  const data = await res.json()
+                  set('picture', data.url)
+                }}
+                className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
+                onClick={() =>
+                  document.getElementById('picture-upload')?.click()
+                }
+              >
+                <input
+                  id='picture-upload'
+                  type='file'
+                  accept='image/*'
+                  className='hidden'
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+
+                    if (!file) return
+
+                    const formData = new FormData()
+                    formData.append('file', file)
+
+                    const res = await fetch('/api/upload', {
+                      method: 'POST',
+                      body: formData,
+                    })
+
+                    if (!res.ok) return
+
+                    const data = await res.json()
+                    set('picture', data.url)
+                  }}
+                />
+
+                {form.picture ? (
+                  <div className='space-y-3'>
+                    <img
+                      src={form.picture}
+                      alt='Preview'
+                      className='mx-auto h-32 w-32 rounded-lg object-cover'
+                    />
+                    <p className='text-xs text-zinc-500'>
+                      Click or drop another image to replace
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className='text-sm font-medium text-zinc-700'>
+                      Drag & drop an image here
+                    </p>
+                    <p className='mt-1 text-xs text-zinc-500'>
+                      or click to browse
+                    </p>
+                    <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
+                  </>
+                )}
+              </div>
             )}
           </Field>
 
