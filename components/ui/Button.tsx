@@ -9,11 +9,11 @@ type Size = "sm" | "md";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-zinc-900 text-white hover:bg-zinc-800 disabled:hover:bg-zinc-900",
+    "bg-primary text-primary-foreground hover:bg-accent disabled:hover:bg-primary",
   secondary:
-    "border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 disabled:hover:bg-white",
-  danger: "bg-red-600 text-white hover:bg-red-500 disabled:hover:bg-red-600",
-  ghost: "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
+    "border border-border bg-card text-foreground hover:bg-muted disabled:hover:bg-card",
+  danger: "bg-destructive text-primary-foreground hover:bg-destructive disabled:hover:bg-destructive",
+  ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
 };
 
 const SIZES: Record<Size, string> = {
@@ -40,7 +40,7 @@ export function buttonClasses({
 } = {}): string {
   return cn(
     "inline-flex items-center justify-center gap-1.5 rounded-md font-medium",
-    "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900",
+    "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
     "disabled:cursor-not-allowed disabled:opacity-50",
     VARIANTS[variant],
     SIZES[size],

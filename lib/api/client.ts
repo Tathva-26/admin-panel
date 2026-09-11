@@ -22,7 +22,8 @@ import axios from "axios";
  * backend". That was survivable while an in-repo mock answered those paths;
  * it no longer exists.
  */
-const API_ORIGIN = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+export const API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,

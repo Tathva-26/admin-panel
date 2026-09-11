@@ -42,7 +42,6 @@ export default function BookingStatusModal({
     updateBookingStatus(uid, { status: next }),
   );
 
-
   async function submit() {
     const updated = await update.run(booking.bookingUid, status);
     if (updated) onSaved();
@@ -74,40 +73,40 @@ export default function BookingStatusModal({
       {booking ? (
         <div className="space-y-3">
           {update.error ? (
-            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {update.error.message}
             </p>
           ) : null}
 
-          <dl className="grid grid-cols-2 gap-y-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm">
-            <dt className="text-zinc-500">Booked by</dt>
-            <dd className="truncate text-right text-zinc-900">
+          <dl className="grid grid-cols-2 gap-y-2 rounded-md border border-border bg-muted px-3 py-2.5 text-sm">
+            <dt className="text-muted-foreground">Booked by</dt>
+            <dd className="truncate text-right text-foreground">
               {booking.user?.name ?? "—"}
             </dd>
 
-            <dt className="text-zinc-500">Kind</dt>
-            <dd className="text-right text-zinc-900">
+            <dt className="text-muted-foreground">Kind</dt>
+            <dd className="text-right text-foreground">
               {bookingKindLabel(booking.kind)}
             </dd>
 
-            <dt className="text-zinc-500">Event</dt>
-            <dd className="truncate text-right text-zinc-900">
+            <dt className="text-muted-foreground">Event</dt>
+            <dd className="truncate text-right text-foreground">
               {booking.event?.heading ?? "—"}
             </dd>
 
-            <dt className="text-zinc-500">Amount</dt>
-            <dd className="numeric text-right text-zinc-900">
+            <dt className="text-muted-foreground">Amount</dt>
+            <dd className="numeric text-right text-foreground">
               {formatInr(booking.amountTotal)}
             </dd>
 
             {/* When money actually cleared, which is not when the booking was
                 made — the gap is the whole reason PENDING exists. */}
-            <dt className="text-zinc-500">Paid at</dt>
-            <dd className="numeric text-right text-zinc-900">
+            <dt className="text-muted-foreground">Paid at</dt>
+            <dd className="numeric text-right text-foreground">
               {booking.paidAt ? formatDateTime(booking.paidAt) : "—"}
             </dd>
 
-            <dt className="text-zinc-500">Current</dt>
+            <dt className="text-muted-foreground">Current</dt>
             <dd className="text-right">
               <BookingStatusBadge status={booking.status} />
             </dd>

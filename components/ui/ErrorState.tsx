@@ -22,15 +22,15 @@ export default function ErrorState({
 
   return (
     <div className="px-6 py-12 text-center">
-      <p className="text-sm font-medium text-zinc-800">{error.message}</p>
+      <p className="text-sm font-medium text-foreground">{error.message}</p>
 
-      <p className="numeric mt-1 text-xs text-zinc-400">
+      <p className="numeric mt-1 text-xs text-muted-foreground">
         {error.status ? `${error.status} · ` : ""}
         {error.code}
       </p>
 
       {error.retryAfter ? (
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           Try again in {error.retryAfter}s.
         </p>
       ) : null}

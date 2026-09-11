@@ -185,7 +185,7 @@ export default function EventsList({
     {
       key: "id",
       header: "ID",
-      className: "numeric w-16 text-zinc-400",
+      className: "numeric w-16 text-muted-foreground",
       hideOnMobile: true,
       cell: (event) => event.id,
     },
@@ -196,9 +196,9 @@ export default function EventsList({
       sortKey: "heading",
       cell: (event) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{event.heading}</p>
+          <p className="truncate font-medium text-foreground">{event.heading}</p>
           {event.venue ? (
-            <p className="truncate text-xs text-zinc-500">{event.venue.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{event.venue.name}</p>
           ) : null}
         </div>
       ),
@@ -206,14 +206,14 @@ export default function EventsList({
     {
       key: "type",
       header: "Type",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       cell: (event) => eventTypeLabel(event.type),
     },
     {
       key: "datetime",
       header: "Starts",
       sortKey: "datetime",
-      className: "numeric w-48 text-zinc-600",
+      className: "numeric w-48 text-muted-foreground",
       cell: (event) => formatDateTime(event.startTime ?? event.datetime),
     },
     {
@@ -227,7 +227,7 @@ export default function EventsList({
       key: "capacity",
       header: "Capacity",
       align: "right",
-      className: "numeric w-24 text-zinc-600",
+      className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
       cell: (event) => event.capacity ?? "—",
     },
@@ -235,7 +235,7 @@ export default function EventsList({
       key: "createdAt",
       header: "Created",
       sortKey: "createdAt",
-      className: "numeric w-32 text-zinc-500",
+      className: "numeric w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (event) => formatDate(event.createdAt),
     },
@@ -316,8 +316,8 @@ export default function EventsList({
         <div
           className={
             outcome.failures.length > 0
-              ? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-              : "rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+              ? "rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-sm text-warning"
+              : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
           <p>

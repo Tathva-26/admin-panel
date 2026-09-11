@@ -286,7 +286,7 @@ export default function CommandPalette({
         type="button"
         aria-label="Close search"
         onClick={close}
-        className="absolute inset-0 h-full w-full cursor-default bg-zinc-900/40"
+        className="absolute inset-0 h-full w-full cursor-default bg-background/80"
       />
 
       <div
@@ -294,7 +294,7 @@ export default function CommandPalette({
         role="dialog"
         aria-modal="true"
         aria-label="Search"
-        className="relative flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-lg"
+        className="relative flex max-h-[70vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
       >
         <input
           ref={inputRef}
@@ -305,11 +305,11 @@ export default function CommandPalette({
           }}
           onKeyDown={onInputKeyDown}
           placeholder="Search events, people, venues, bookings…"
-          className="w-full shrink-0 border-b border-zinc-200 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400"
+          className="w-full shrink-0 border-b border-border px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
 
         {items.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm text-zinc-500">
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
             {emptyMessage}
           </p>
         ) : (
@@ -321,7 +321,7 @@ export default function CommandPalette({
               return (
                 <li key={item.id}>
                   {showGroup ? (
-                    <p className="px-4 pt-2 pb-1 text-[11px] tracking-wide text-zinc-400 uppercase">
+                    <p className="px-4 pt-2 pb-1 text-[11px] tracking-wide text-muted-foreground uppercase">
                       {item.group}
                     </p>
                   ) : null}
@@ -332,14 +332,14 @@ export default function CommandPalette({
                     onMouseEnter={() => setActiveIndex(index)}
                     className={cn(
                       "flex w-full items-baseline gap-2 px-4 py-2 text-left",
-                      index === active ? "bg-zinc-100" : "hover:bg-zinc-50",
+                      index === active ? "bg-muted" : "hover:bg-muted",
                     )}
                   >
-                    <span className="truncate text-sm text-zinc-900">
+                    <span className="truncate text-sm text-foreground">
                       {item.label}
                     </span>
                     {item.hint ? (
-                      <span className="ml-auto shrink-0 text-xs text-zinc-400">
+                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                         {item.hint}
                       </span>
                     ) : null}
@@ -350,7 +350,7 @@ export default function CommandPalette({
           </ul>
         )}
 
-        <p className="shrink-0 border-t border-zinc-200 px-4 py-2 text-[11px] text-zinc-400">
+                    <p className="shrink-0 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
           ↑↓ to move · Enter to open · Esc to close
         </p>
       </div>

@@ -13,6 +13,7 @@ import {
 
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
 import { toApiError, type ApiError } from "@/lib/api/errors";
+
 import type { AdminUser } from "@/types";
 
 interface AuthContextType {
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifySession = useCallback(async () => {
     if (typeof window === "undefined") return;
     const token = window.localStorage.getItem("jwt");
+
 
     if (!token) {
       setUser(null);
@@ -86,7 +88,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setUser(null);
     setIsUnauthorized(false);
-    apiLogout();
   }, []);
 
   /*

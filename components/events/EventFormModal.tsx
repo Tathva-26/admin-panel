@@ -271,7 +271,7 @@ function EventFormDialog({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   disabled={mutation.loading || archive.loading}
                   onClick={() => {
                     archive.reset();
@@ -304,7 +304,7 @@ function EventFormDialog({
         }
       >
         {mutation.error && mutation.error.issues.length === 0 ? (
-          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="mb-4 rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {apiErrorMessage(mutation.error)}
           </p>
         ) : null}
@@ -491,11 +491,11 @@ function EventFormDialog({
                   set("isTeamEvent", e.target.checked);
                   if (!e.target.checked) set("teamSize", null);
                 }}
-                className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                className="h-4 w-4 rounded border-input accent-primary"
               />
               <label
                 htmlFor="isTeamEvent"
-                className="text-sm font-medium text-zinc-700"
+                className="text-sm font-medium text-foreground"
               >
                 Team Event
               </label>
@@ -546,11 +546,11 @@ function EventFormDialog({
                 id="published"
                 checked={form.published ?? false}
                 onChange={(e) => set("published", e.target.checked)}
-                className="h-4 w-4 rounded border-zinc-300 accent-zinc-900"
+                className="h-4 w-4 rounded border-input accent-primary"
               />
               <label
                 htmlFor="published"
-                className="text-sm font-medium text-zinc-700"
+                className="text-sm font-medium text-foreground"
               >
                 Publish immediately
               </label>
@@ -603,7 +603,7 @@ function EventFormLoader({
     return (
       <Modal open={true} onClose={onClose} title="Loading Event">
         <div className="flex justify-center py-12">
-          <Spinner className="h-8 w-8 text-zinc-900" />
+          <Spinner className="h-8 w-8 text-foreground" />
         </div>
       </Modal>
     );

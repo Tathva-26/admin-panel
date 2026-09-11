@@ -108,9 +108,9 @@ export default function VenuesList() {
       className: "w-72",
       cell: (venue) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{venue.name}</p>
+          <p className="truncate font-medium text-foreground">{venue.name}</p>
           {venue.address ? (
-            <p className="truncate text-xs text-zinc-500">{venue.address}</p>
+            <p className="truncate text-xs text-muted-foreground">{venue.address}</p>
           ) : null}
         </div>
       ),
@@ -131,7 +131,7 @@ export default function VenuesList() {
       key: "count",
       header: "Events",
       align: "center",
-      className: "numeric w-24 text-zinc-600",
+      className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
       cell: (venue) => eventsFor(venue).length || "—",
     },
@@ -156,7 +156,7 @@ export default function VenuesList() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => {
               remove.reset();
               setPendingDelete(venue);
@@ -182,7 +182,7 @@ export default function VenuesList() {
       {/* Silently showing counts drawn from a truncated fetch would be worse
           than showing none. */}
       {(schedule.data?.total ?? 0) > SCHEDULE_PAGE_SIZE ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           There are {schedule.data?.total} events but only the first{" "}
           {SCHEDULE_PAGE_SIZE} are counted here, so the schedule below may be
           incomplete.
@@ -192,7 +192,7 @@ export default function VenuesList() {
       {/* The schedule is secondary to the list — if it fails, the venues are
           still usable, so this says so quietly rather than taking over. */}
       {schedule.error ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Couldn&rsquo;t load the event schedule, so &ldquo;Right now&rdquo; is
           unavailable. {schedule.error.message}
         </p>

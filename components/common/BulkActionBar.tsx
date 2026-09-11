@@ -21,10 +21,10 @@ export default function BulkActionBar({
   if (count === 0) return null;
 
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 mt-3 border-t border-zinc-200 bg-white/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
+    <div className="sticky bottom-0 z-20 -mx-4 mt-3 border-t border-border bg-card/95 px-4 py-2.5 backdrop-blur sm:-mx-6 sm:px-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-zinc-600">
-          <span className="numeric font-medium text-zinc-900">{count}</span>{" "}
+        <p className="text-sm text-muted-foreground">
+          <span className="numeric font-medium text-foreground">{count}</span>{" "}
           selected
         </p>
 

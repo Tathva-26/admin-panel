@@ -99,7 +99,7 @@ export default function Modal({
         aria-label="Close"
         data-modal-backdrop
         onClick={onClose}
-        className="absolute inset-0 h-full w-full cursor-default bg-zinc-900/40"
+        className="absolute inset-0 h-full w-full cursor-default bg-background/80"
       />
 
       {/*
@@ -111,12 +111,12 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-md border border-zinc-200 bg-white shadow-lg"
+        className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col rounded-md border border-border bg-popover shadow-lg"
       >
-        <div className="shrink-0 border-b border-zinc-200 px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-zinc-900">{title}</h2>
+        <div className="shrink-0 border-b border-border px-5 py-3.5">
+          <h2 className="text-sm font-semibold text-foreground">{title}</h2>
           {description ? (
-            <p className="mt-0.5 text-sm text-zinc-500">{description}</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
           ) : null}
         </div>
 
@@ -125,7 +125,7 @@ export default function Modal({
         ) : null}
 
         {footer ? (
-          <div className="flex shrink-0 justify-end gap-2 border-t border-zinc-200 px-5 py-3">
+          <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-3">
             {footer}
           </div>
         ) : null}

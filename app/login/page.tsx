@@ -20,19 +20,19 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-zinc-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-8 shadow-sm">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Tathva &apos;26 Admin Panel
           </h1>
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-2 text-sm text-muted-foreground">
             Sign in with your Google account to access the admin panel
           </p>
         </div>
 
         {errorParam ? (
-          <div className="mt-6 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+          <div className="mt-6 rounded-md border border-destructive bg-destructive/10 p-3 text-xs text-destructive">
             {errorParam === "session_expired" &&
               "Your session has expired. Please sign in again."}
             {errorParam === "missing_token" &&
@@ -82,8 +82,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-dvh items-center justify-center bg-zinc-50">
-          <div className="text-sm text-zinc-500">Loading sign in...</div>
+        <div className="flex min-h-dvh items-center justify-center bg-background">
+          <div className="text-sm text-muted-foreground">Loading sign in...</div>
         </div>
       }
     >
