@@ -11,19 +11,19 @@ export interface Segment {
 
 /** Solid fills for the bar, keyed to the same tones the badges use. */
 const FILLS: Record<BadgeTone, string> = {
-  neutral: "bg-zinc-300",
-  green: "bg-green-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
-  blue: "bg-blue-500",
+  neutral: "bg-muted",
+  green: "bg-success",
+  amber: "bg-warning",
+  red: "bg-destructive",
+  blue: "bg-info",
 };
 
 const DOTS: Record<BadgeTone, string> = {
-  neutral: "bg-zinc-400",
-  green: "bg-green-500",
-  amber: "bg-amber-500",
-  red: "bg-red-500",
-  blue: "bg-blue-500",
+  neutral: "bg-muted-foreground",
+  green: "bg-success",
+  amber: "bg-warning",
+  red: "bg-destructive",
+  blue: "bg-info",
 };
 
 interface DistributionBarProps {
@@ -51,11 +51,11 @@ export default function DistributionBar({
   return (
     <div
       className={cn(
-        "rounded-lg border border-zinc-200 bg-white px-3 py-2.5",
+        "rounded-lg border border-border bg-card px-3 py-2.5",
         className,
       )}
     >
-      <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-zinc-100">
+      <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full bg-muted">
         {total === 0
           ? null
           : segments
@@ -74,17 +74,17 @@ export default function DistributionBar({
         {segments.map((segment) => (
           <span
             key={segment.label}
-            className="flex items-center gap-1.5 text-xs text-zinc-600"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
           >
             <span
               aria-hidden="true"
               className={cn(
                 "h-1.5 w-1.5 shrink-0 rounded-full",
-                segment.value > 0 ? DOTS[segment.tone] : "bg-zinc-200",
+                segment.value > 0 ? DOTS[segment.tone] : "bg-muted",
               )}
             />
             {segment.label}
-            <span className="numeric font-medium text-zinc-900">
+            <span className="numeric font-medium text-foreground">
               {segment.value}
             </span>
           </span>

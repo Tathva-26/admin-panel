@@ -1,12 +1,13 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import { PublishedBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
+import Modal from "@/components/ui/Modal";
 import Pagination from "@/components/ui/Pagination";
 import { useList } from "@/hooks/useList";
 import {
@@ -16,9 +17,9 @@ import {
 } from "@/lib/api/announcements";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
-import { asBool } from "@/lib/params";
+import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import type { Announcement } from "@/types";
+import { ORDERS, type Announcement } from "@/types";
 
 import AnnouncementFormModal from "./AnnouncementFormModal";
 import AnnouncementRowActions from "./AnnouncementRowActions";
@@ -36,7 +37,10 @@ export default function AnnouncementsList() {
     listAnnouncements({
       page,
       pageSize,
+      search: asText(filters.search),
       published: asBool(filters.published),
+      sort: asText(filters.sort),
+      order: asEnum(filters.order, ORDERS),
     }),
   );
   const refetchAnnouncements = announcements.refetch;
@@ -46,6 +50,10 @@ export default function AnnouncementsList() {
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
 
+  // Title/content are truncated in the table row; tapping opens this so the
+  // full text is still reachable, on mobile as much as desktop.
+  const [viewing, setViewing] = useState<Announcement | null>(null);
+
   const searchParams = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAnnouncementId, setEditingAnnouncementId] =
@@ -53,15 +61,6 @@ export default function AnnouncementsList() {
 
   const isNewParam = searchParams.get("new") === "true";
   const modalOpen = formOpen || isNewParam;
-
-  useEffect(() => {
-    const handleOpen = () => {
-      setEditingAnnouncementId(null);
-      setFormOpen(true);
-    };
-    window.addEventListener("open-create-announcement", handleOpen);
-    return () => window.removeEventListener("open-create-announcement", handleOpen);
-  }, []);
 
   const closeForm = useCallback(() => {
     setFormOpen(false);
@@ -121,25 +120,33 @@ export default function AnnouncementsList() {
     refreshDashboard();
   }
 
-  const columns: Column<Announcement>[] = [
+const columns: Column<Announcement>[] = [
     {
       key: "id",
       header: "ID",
-      className: "numeric w-16 text-zinc-400",
+      className: "numeric w-16 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => a.id,
     },
-    {
+{
       key: "title",
+      sortKey: "title",
       header: "Title",
       primary: true,
+      // A reasonable min-width prevents it from getting crushed on small screens
+      className: "min-w-[150px]", 
       cell: (a) => (
-        <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{a.title}</p>
-          <p className="truncate text-xs text-zinc-500 line-clamp-1">
-            {a.content}
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => setViewing(a)}
+          // inline-flex makes the button wrap tightly around the text instead of filling the gap
+          // We apply the max-width constraints directly to the button now.
+          className="group inline-flex max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[600px] text-left outline-none rounded-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span className="truncate font-medium text-foreground transition-colors">
+            {a.title}
+          </span>
+        </button>
       ),
     },
     {
@@ -150,15 +157,16 @@ export default function AnnouncementsList() {
     },
     {
       key: "createdAt",
+      sortKey: "createdAt",
       header: "Created",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => formatDate(a.createdAt),
     },
     {
       key: "updatedAt",
       header: "Updated",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (a) => formatDate(a.updatedAt),
     },
@@ -166,7 +174,7 @@ export default function AnnouncementsList() {
       key: "actions",
       header: "",
       className: "w-12",
-      hideOnMobile: true,
+      isActions: true,
       cell: (a) => (
         <AnnouncementRowActions
           announcement={a}
@@ -196,26 +204,14 @@ export default function AnnouncementsList() {
           </Select>
         </div>
 
-        <div className="flex gap-2 sm:ml-auto">
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setEditingAnnouncementId(null);
-              setFormOpen(true);
-            }}
-          >
-            + New Announcement
-          </Button>
-        </div>
       </div>
 
       {outcome ? (
         <div
           className={
             outcome.failures.length > 0
-              ? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-              : "rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+              ? "rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-sm text-warning"
+              : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
           <p>
@@ -244,6 +240,9 @@ export default function AnnouncementsList() {
         loading={announcements.loading}
         error={announcements.error}
         onRetry={announcements.refetch}
+        sort={announcements.sort}
+        order={announcements.order}
+        onToggleSort={announcements.toggleSort}
         selectable
         selected={selected}
         onSelectedChange={setSelected}
@@ -280,6 +279,29 @@ export default function AnnouncementsList() {
           Unpublish
         </Button>
       </BulkActionBar>
+
+      {viewing ? (
+        <Modal
+          open
+          onClose={() => setViewing(null)}
+          title={viewing.title}
+          footer={
+            <Button size="sm" onClick={() => setViewing(null)}>
+              Close
+            </Button>
+          }
+        >
+          <div className="space-y-2 text-sm">
+            <p className="text-xs text-muted-foreground">
+              {viewing.published ? "Published" : "Draft"} &middot; Created{" "}
+              {formatDate(viewing.createdAt)}
+            </p>
+            <p className="whitespace-pre-wrap text-foreground">
+              {viewing.content}
+            </p>
+          </div>
+        </Modal>
+      ) : null}
 
       <AnnouncementFormModal
         open={modalOpen}

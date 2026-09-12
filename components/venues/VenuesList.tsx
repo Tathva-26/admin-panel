@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
@@ -37,10 +38,10 @@ export default function VenuesList() {
       page,
       pageSize,
       search: asText(filters.search),
-      sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
     }),
   );
+
+  const setVenueFilter = venues.setFilter;
 
   const schedule = useApi("venue-schedule", () =>
     listEvents({ pageSize: SCHEDULE_PAGE_SIZE }),
@@ -53,8 +54,10 @@ export default function VenuesList() {
     [schedule.data],
   );
 
+  const searchParams = useSearchParams();
   const [editing, setEditing] = useState<Venue | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const isNewParam = searchParams.get("new") === "true";
   const [pendingDelete, setPendingDelete] = useState<Venue | null>(null);
   const [viewingSchedule, setViewingSchedule] = useState<Venue | null>(null);
 
@@ -64,6 +67,11 @@ export default function VenuesList() {
     setEditing(null);
     setFormOpen(true);
   };
+
+  const closeForm = useCallback(() => {
+    setFormOpen(false);
+    if (searchParams.get("new") === "true") setVenueFilter("new", null);
+  }, [searchParams, setVenueFilter]);
 
   const openEdit = (venue: Venue) => {
     setEditing(venue);
@@ -92,7 +100,9 @@ export default function VenuesList() {
       key: "name",
       header: "Venue",
       primary: true,
-      sortKey: "name",
+      // No sortKey: GET /admin/venues takes no query params, so the backend
+      // ignores sort entirely. A header that reorders nothing is worse than
+      // one that does not offer to.
       // Capped rather than left to absorb all the slack, which pushed the
       // live column out to the far right on a wide screen.
       className: "w-72",
@@ -121,7 +131,7 @@ export default function VenuesList() {
       key: "count",
       header: "Events",
       align: "center",
-      className: "numeric w-24 text-zinc-600",
+      className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
       cell: (venue) => eventsFor(venue).length || "—",
     },
@@ -146,7 +156,7 @@ export default function VenuesList() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
             onClick={() => {
               remove.reset();
               setPendingDelete(venue);
@@ -167,20 +177,12 @@ export default function VenuesList() {
           onChange={(value) => venues.setFilter("search", value)}
           placeholder="Search venues…"
         />
-        <Button
-          size="sm"
-          variant="primary"
-          className="sm:ml-auto"
-          onClick={openCreate}
-        >
-          New venue
-        </Button>
       </div>
 
       {/* Silently showing counts drawn from a truncated fetch would be worse
           than showing none. */}
       {(schedule.data?.total ?? 0) > SCHEDULE_PAGE_SIZE ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           There are {schedule.data?.total} events but only the first{" "}
           {SCHEDULE_PAGE_SIZE} are counted here, so the schedule below may be
           incomplete.
@@ -190,7 +192,7 @@ export default function VenuesList() {
       {/* The schedule is secondary to the list — if it fails, the venues are
           still usable, so this says so quietly rather than taking over. */}
       {schedule.error ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Couldn&rsquo;t load the event schedule, so &ldquo;Right now&rdquo; is
           unavailable. {schedule.error.message}
         </p>
@@ -203,9 +205,6 @@ export default function VenuesList() {
         loading={venues.loading}
         error={venues.error}
         onRetry={venues.refetch}
-        sort={venues.sort}
-        order={venues.order}
-        onToggleSort={venues.toggleSort}
         emptyTitle="No venues yet"
         emptyDescription="Add a venue before scheduling events against it."
         emptyAction={
@@ -225,13 +224,13 @@ export default function VenuesList() {
       />
 
       {/* Keyed so switching between rows (or create) starts from a fresh draft. */}
-      {formOpen ? (
+      {formOpen || isNewParam ? (
         <VenueFormModal
           key={editing?.id ?? "new"}
           venue={editing}
-          onClose={() => setFormOpen(false)}
+          onClose={closeForm}
           onSaved={() => {
-            setFormOpen(false);
+            closeForm();
             venues.refetch();
             schedule.refetch();
           }}

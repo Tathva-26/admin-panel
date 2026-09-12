@@ -78,7 +78,7 @@ export default function VenueFormModal({
       <div className="space-y-3">
         {/* A non-field error (409, 500, network) still has to be visible. */}
         {save.error && Object.keys(save.fields).length === 0 ? (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {save.error.message}
           </p>
         ) : null}

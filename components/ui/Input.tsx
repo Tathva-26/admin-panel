@@ -4,10 +4,10 @@ import { cn } from "@/lib/cn";
 
 /** Shared so an input, select and textarea cannot drift apart visually. */
 const CONTROL =
-  "block w-full rounded-md border border-zinc-300 bg-white px-2.5 text-sm text-zinc-900 " +
-  "placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none " +
-  "disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500 " +
-  "aria-[invalid]:border-red-400 aria-[invalid]:focus:border-red-500";
+  "block w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground " +
+  "placeholder:text-muted-foreground focus:border-ring focus:outline-none " +
+  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground " +
+  "aria-[invalid]:border-destructive aria-[invalid]:focus:border-destructive";
 
 export function Input({
   className,

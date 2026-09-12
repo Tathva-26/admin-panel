@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useCallback,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -12,6 +13,7 @@ import {
 
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
 import { toApiError, type ApiError } from "@/lib/api/errors";
+
 import type { AdminUser } from "@/types";
 
 interface AuthContextType {
@@ -35,6 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const verifySession = useCallback(async () => {
     if (typeof window === "undefined") return;
     const token = window.localStorage.getItem("jwt");
+
 
     if (!token) {
       setUser(null);
@@ -82,26 +85,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void Promise.resolve().then(verifySession);
   }, [verifySession]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     setIsUnauthorized(false);
-    apiLogout();
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        error,
-        isUnauthorized,
-        verifySession,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  /*
+   * Memoised so the provider does not hand out a new object on every render.
+   * Without it every useAuth consumer — the shell, the topbar, the callback
+   * page — re-renders whenever any piece of auth state changes, even the ones
+   * that only read `user`.
+   */
+  const value = useMemo(
+    () => ({ user, loading, error, isUnauthorized, verifySession, logout }),
+    [user, loading, error, isUnauthorized, verifySession, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
 import BulkActionBar from "@/components/common/BulkActionBar";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
@@ -10,14 +10,15 @@ import { PublishedBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
+import { useCsvExport } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
-import { downloadCsv, timestampedFilename, toCsv } from "@/lib/csv";
-import { formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { eventTypeLabel } from "@/lib/labels";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import { EVENT_TYPES, type AdminEvent } from "@/types";
+import { EVENT_TYPES, ORDERS, type AdminEvent } from "@/types";
 
 import EventFormModal from "./EventFormModal";
 import EventRowActions from "./EventRowActions";
@@ -51,7 +52,7 @@ const EXPORT_HEADERS = [
 const toExportRow = (event: AdminEvent) => [
   event.id,
   event.heading,
-  event.type,
+  eventTypeLabel(event.type),
   event.published ? "Published" : "Draft",
   event.startTime ?? event.datetime
     ? formatDateTime(event.startTime ?? event.datetime)
@@ -65,8 +66,6 @@ const toExportRow = (event: AdminEvent) => [
   event.teamSize ?? "",
 ];
 
-const EXPORT_PAGE_SIZE = 100;
-const EXPORT_MAX_ROWS = 2000;
 
 export default function EventsList({
   createOpen = false,
@@ -82,7 +81,7 @@ export default function EventsList({
       type: asEnum(filters.type, EVENT_TYPES),
       published: asBool(filters.published),
       sort: asText(filters.sort),
-      order: asEnum(filters.order, ["asc", "desc"]),
+      order: asEnum(filters.order, ORDERS),
     }),
   );
   const refetchEvents = events.refetch;
@@ -90,7 +89,6 @@ export default function EventsList({
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -98,17 +96,12 @@ export default function EventsList({
 
   const isNewParam = searchParams.get("new") === "true";
   const eventIdParam = searchParams.get("eventId");
-  const targetEventId = eventIdParam ? Number(eventIdParam) : null;
+  const parsedEventId = eventIdParam ? Number(eventIdParam) : NaN;
+  const targetEventId =
+    Number.isInteger(parsedEventId) && parsedEventId > 0
+      ? parsedEventId
+      : null;
   const modalOpen = formOpen || createOpen || isNewParam || !!targetEventId;
-
-  useEffect(() => {
-    const handleOpen = () => {
-      setEditingEvent(null);
-      setFormOpen(true);
-    };
-    window.addEventListener("open-create-event", handleOpen);
-    return () => window.removeEventListener("open-create-event", handleOpen);
-  }, []);
 
   const closeForm = useCallback(() => {
     setFormOpen(false);
@@ -150,46 +143,16 @@ export default function EventsList({
     type: asEnum(events.filters.type, EVENT_TYPES),
     published: asBool(events.filters.published),
     sort: asText(events.filters.sort),
-    order: asEnum(events.filters.order, ["asc", "desc"]),
+    order: asEnum(events.filters.order, ORDERS),
   };
 
-  async function exportCsv() {
-    setExporting(true);
-    setOutcome(null);
 
-    try {
-      const rows: AdminEvent[] = [];
-      let page = 1;
-      let total = Number.POSITIVE_INFINITY;
-
-      while (rows.length < Math.min(total, EXPORT_MAX_ROWS)) {
-        const result = await listEvents({
-          ...activeQuery,
-          page,
-          pageSize: EXPORT_PAGE_SIZE,
-        });
-
-        total = result.total;
-        if (result.items.length === 0) break;
-
-        rows.push(...result.items);
-        page += 1;
-      }
-
-      downloadCsv(
-        timestampedFilename("events"),
-        toCsv(EXPORT_HEADERS, rows.map(toExportRow)),
-      );
-    } catch (error) {
-      setOutcome({
-        action: "Export",
-        succeeded: 0,
-        failures: [{ id: 0, message: apiErrorMessage(toApiError(error)) }],
-      });
-    } finally {
-      setExporting(false);
-    }
-  }
+  const csv = useCsvExport({
+    fetchPage: (page, pageSize) => listEvents({ ...activeQuery, page, pageSize }),
+    headers: EXPORT_HEADERS,
+    toRow: toExportRow,
+    filename: "events",
+  });
 
   const targets = events.items.filter((event) => selected.has(event.id));
 
@@ -222,7 +185,7 @@ export default function EventsList({
     {
       key: "id",
       header: "ID",
-      className: "numeric w-16 text-zinc-400",
+      className: "numeric w-16 text-muted-foreground",
       hideOnMobile: true,
       cell: (event) => event.id,
     },
@@ -230,11 +193,12 @@ export default function EventsList({
       key: "heading",
       header: "Event",
       primary: true,
+      sortKey: "heading",
       cell: (event) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-zinc-900">{event.heading}</p>
+          <p className="truncate font-medium text-foreground">{event.heading}</p>
           {event.venue ? (
-            <p className="truncate text-xs text-zinc-500">{event.venue.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{event.venue.name}</p>
           ) : null}
         </div>
       ),
@@ -242,27 +206,38 @@ export default function EventsList({
     {
       key: "type",
       header: "Type",
-      className: "w-32 text-zinc-600 capitalize",
-      cell: (event) => event.type,
+      className: "w-32 text-muted-foreground",
+      cell: (event) => eventTypeLabel(event.type),
     },
     {
       key: "datetime",
       header: "Starts",
-      className: "numeric w-48 text-zinc-600",
+      sortKey: "datetime",
+      className: "numeric w-48 text-muted-foreground",
       cell: (event) => formatDateTime(event.startTime ?? event.datetime),
     },
     {
       key: "price",
       header: "Price",
-      className: "numeric w-28 text-right",
+      align: "right",
+      className: "numeric w-28",
       cell: (event) => formatInr(event.price),
     },
     {
       key: "capacity",
       header: "Capacity",
-      className: "numeric w-24 text-right text-zinc-600",
+      align: "right",
+      className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
       cell: (event) => event.capacity ?? "—",
+    },
+    {
+      key: "createdAt",
+      header: "Created",
+      sortKey: "createdAt",
+      className: "numeric w-32 text-muted-foreground",
+      hideOnMobile: true,
+      cell: (event) => formatDate(event.createdAt),
     },
     {
       key: "published",
@@ -274,7 +249,9 @@ export default function EventsList({
       key: "actions",
       header: "",
       className: "w-12",
-      hideOnMobile: true,
+      // isActions, not hideOnMobile: hiding it the way an ordinary column is
+      // hidden left no way to act on a row from a phone at all.
+      isActions: true,
       cell: (event) => (
         <EventRowActions
           event={event}
@@ -304,8 +281,8 @@ export default function EventsList({
           >
             <option value="">All types</option>
             {EVENT_TYPES.map((type) => (
-              <option key={type} value={type} className="capitalize">
-                {type}
+              <option key={type} value={type}>
+                {eventTypeLabel(type)}
               </option>
             ))}
           </Select>
@@ -321,47 +298,16 @@ export default function EventsList({
             <option value="false">Draft</option>
           </Select>
 
-          <Select
-            aria-label="Sort events by"
-            className="h-9 w-full sm:h-8 sm:w-40"
-            value={events.filters.sort ?? ""}
-            onChange={(e) => events.setFilter("sort", e.target.value)}
-          >
-            <option value="">Sort by</option>
-            <option value="datetime">Start date</option>
-            <option value="heading">Event name</option>
-            <option value="createdAt">Created date</option>
-          </Select>
-
-          <Select
-            aria-label="Sort order"
-            className="h-9 w-full sm:h-8 sm:w-36"
-            value={events.filters.order ?? "asc"}
-            onChange={(e) => events.setFilter("order", e.target.value)}
-          >
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </Select>
         </div>
 
         <div className="flex gap-2 sm:ml-auto">
           <Button
             size="sm"
-            loading={exporting}
+            loading={csv.exporting}
             disabled={events.total === 0}
-            onClick={exportCsv}
+            onClick={csv.exportCsv}
           >
             Export CSV
-          </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              setEditingEvent(null);
-              setFormOpen(true);
-            }}
-          >
-            + New Event
           </Button>
         </div>
       </div>
@@ -370,8 +316,8 @@ export default function EventsList({
         <div
           className={
             outcome.failures.length > 0
-              ? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
-              : "rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800"
+              ? "rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-sm text-warning"
+              : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
           <p>
@@ -400,6 +346,9 @@ export default function EventsList({
         loading={events.loading}
         error={events.error}
         onRetry={events.refetch}
+        sort={events.sort}
+        order={events.order}
+        onToggleSort={events.toggleSort}
         selectable
         selected={selected}
         onSelectedChange={setSelected}

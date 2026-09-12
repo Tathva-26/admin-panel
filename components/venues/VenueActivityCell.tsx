@@ -25,13 +25,13 @@ export default function VenueActivityCell({
   // Before the first clock tick there is no meaningful "now", so showing
   // "nothing scheduled" would be a guess rather than an answer.
   if (loading || now.getTime() === 0) {
-    return <Spinner className="h-3.5 w-3.5 text-zinc-300" />;
+    return <Spinner className="h-3.5 w-3.5 text-muted-foreground" />;
   }
 
   const activity = venueActivity(events, now);
 
   if (activity.state === "idle") {
-    return <span className="text-xs text-zinc-400">Nothing scheduled</span>;
+    return <span className="text-xs text-muted-foreground">Nothing scheduled</span>;
   }
 
   const { event, start, end } = activity.slot;
@@ -39,16 +39,16 @@ export default function VenueActivityCell({
   if (activity.state === "live") {
     return (
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 text-xs font-medium text-green-700">
+        <p className="flex items-center gap-1.5 text-xs font-medium text-success">
           <span className="relative flex h-1.5 w-1.5 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-600" />
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" />
           </span>
           On now
         </p>
-        <p className="truncate text-sm text-zinc-900">{event.heading}</p>
+        <p className="truncate text-sm text-foreground">{event.heading}</p>
         {end ? (
-          <p className="numeric text-xs text-zinc-500">
+          <p className="numeric text-xs text-muted-foreground">
             until {formatTime(end.toISOString())}
           </p>
         ) : null}
@@ -58,12 +58,12 @@ export default function VenueActivityCell({
 
   return (
     <div className="min-w-0">
-      <p className="text-xs text-zinc-500">
+      <p className="text-xs text-muted-foreground">
         Next &middot;{" "}
-        <span className="text-zinc-700">{relativeFromNow(start, now)}</span>
+        <span className="text-muted-foreground">{relativeFromNow(start, now)}</span>
       </p>
-      <p className="truncate text-sm text-zinc-900">{event.heading}</p>
-      <p className="numeric text-xs text-zinc-500">
+      <p className="truncate text-sm text-foreground">{event.heading}</p>
+      <p className="numeric text-xs text-muted-foreground">
         {formatDateTime(start.toISOString())}
       </p>
     </div>

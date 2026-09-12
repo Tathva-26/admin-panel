@@ -81,7 +81,7 @@ const TABLE_VISIBLE = {
 } as const;
 
 const CHECKBOX_CLASS =
-  "h-4 w-4 shrink-0 cursor-pointer rounded border-zinc-300 accent-zinc-900";
+  "h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-primary";
 
 /**
  * One table for every list screen, so loading, empty and error states are
@@ -156,7 +156,7 @@ export default function DataTable<T>({
   );
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {error ? (
         <ErrorState error={error} onRetry={onRetry} />
       ) : showEmpty ? (
@@ -170,7 +170,6 @@ export default function DataTable<T>({
           {/* Phones and small tablets: one card per row. */}
           <ul
             className={cn(
-              "divide-y divide-zinc-100",
               CARDS_VISIBLE[cardsBelow],
               dimWhileReloading,
             )}
@@ -178,8 +177,8 @@ export default function DataTable<T>({
             {showSkeleton
               ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
                   <li key={`skeleton-${index}`} className="space-y-2 px-4 py-3">
-                    <span className="block h-4 w-2/3 animate-pulse rounded bg-zinc-100" />
-                    <span className="block h-3 w-1/3 animate-pulse rounded bg-zinc-100" />
+                    <span className="block h-4 w-2/3 animate-pulse rounded bg-muted" />
+                    <span className="block h-3 w-1/3 animate-pulse rounded bg-muted" />
                   </li>
                 ))
               : rows.map((row) => (
@@ -195,17 +194,17 @@ export default function DataTable<T>({
                     ) : null}
 
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-zinc-900">
+                      <div className="text-sm font-medium text-foreground">
                         {primary.cell(row)}
                       </div>
 
                       <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5">
                         {secondary.map((column) => (
                           <div key={column.key} className="min-w-0">
-                            <dt className="text-[11px] tracking-wide text-zinc-400 uppercase">
+                            <dt className="text-[11px] tracking-wide text-muted-foreground uppercase">
                               {column.header}
                             </dt>
-                            <dd className="truncate text-sm text-zinc-700">
+                            <dd className="truncate text-sm text-muted-foreground">
                               {column.cell(row)}
                             </dd>
                           </div>
@@ -218,7 +217,7 @@ export default function DataTable<T>({
                         delete a row from a small screen.
                       */}
                       {actionColumn ? (
-                        <div className="mt-2 flex justify-end border-t border-zinc-100 pt-2">
+                        <div className="mt-2 flex justify-end pt-2">
                           {actionColumn.cell(row)}
                         </div>
                       ) : null}
@@ -245,11 +244,11 @@ export default function DataTable<T>({
                   The background is on the cells rather than the row: a <tr>
                   cannot paint behind sticky <th>s, so rows would show through. */}
               <thead className="sticky top-0 z-10">
-                <tr className="border-b border-zinc-200">
+                <tr className="border-b border-border">
                   {selectionOn ? (
                     <th
                       scope="col"
-                      className="border-b border-zinc-200 bg-zinc-50 w-10 px-4 py-2"
+                      className="border-b border-border bg-muted w-10 px-4 py-2"
                     >
                       <input
                         type="checkbox"
@@ -283,7 +282,7 @@ export default function DataTable<T>({
                             : undefined
                         }
                         className={cn(
-                          "border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-medium tracking-wide text-zinc-500 uppercase",
+                          "border-b border-border bg-muted px-4 py-2 text-xs font-medium tracking-wide text-muted-foreground uppercase",
                           ALIGN[column.align ?? "left"],
                           column.className,
                         )}
@@ -293,8 +292,8 @@ export default function DataTable<T>({
                             type="button"
                             onClick={() => onToggleSort(column.sortKey!)}
                             className={cn(
-                              "-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase hover:bg-zinc-200/60",
-                              active ? "text-zinc-900" : "text-zinc-500",
+                              "-mx-1 inline-flex items-center gap-1 rounded px-1 py-0.5 uppercase hover:bg-accent",
+                              active ? "text-foreground" : "text-muted-foreground",
                             )}
                           >
                             {column.header}
@@ -317,16 +316,14 @@ export default function DataTable<T>({
                 </tr>
               </thead>
 
-              <tbody
-                className={cn("divide-y divide-zinc-100", dimWhileReloading)}
-              >
+              <tbody className={dimWhileReloading}>
                 {showSkeleton
                   ? Array.from({ length: SKELETON_ROWS }, (_, rowIndex) => (
                       <tr key={`skeleton-${rowIndex}`}>
                         {selectionOn ? <td className="px-4 py-2.5" /> : null}
                         {columns.map((column) => (
                           <td key={column.key} className="px-4 py-2.5">
-                            <span className="block h-4 w-full max-w-40 animate-pulse rounded bg-zinc-100" />
+                            <span className="block h-4 w-full max-w-40 animate-pulse rounded bg-muted" />
                           </td>
                         ))}
                       </tr>
@@ -335,8 +332,8 @@ export default function DataTable<T>({
                       <tr
                         key={rowKey(row)}
                         className={cn(
-                          "hover:bg-zinc-50/60",
-                          isSelected(row) && "bg-zinc-50",
+                          "hover:bg-muted",
+                          isSelected(row) && "bg-muted",
                         )}
                       >
                         {selectionOn ? (
@@ -355,7 +352,7 @@ export default function DataTable<T>({
                           <td
                             key={column.key}
                             className={cn(
-                              "px-4 py-2.5 align-middle text-zinc-700",
+                              "px-4 py-2.5 align-middle text-muted-foreground",
                               ALIGN[column.align ?? "left"],
                               column.className,
                             )}

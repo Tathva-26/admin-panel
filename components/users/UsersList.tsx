@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import Avatar from "@/components/common/Avatar";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -16,8 +16,9 @@ import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
 import { listUsers, updateUserRole } from "@/lib/api/users";
 import { formatDate } from "@/lib/format";
+import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
-import { ROLES, type AdminUser, type Role } from "@/types";
+import { ORDERS, ROLES, type AdminUser, type Role } from "@/types";
 
 /** The role a user would be moved to — this panel only ever toggles. */
 const opposite = (role: Role): Role => (role === "ADMIN" ? "USER" : "ADMIN");
@@ -55,7 +56,7 @@ export default function UsersList() {
       search: asText(filters.search),
       role: asEnum(filters.role, ROLES),
       sort: asText(filters.sort),
-      order: filters.order === "desc" ? "desc" : undefined,
+      order: asEnum(filters.order, ORDERS),
     }),
   );
 
@@ -70,18 +71,13 @@ export default function UsersList() {
     search: asText(users.filters.search),
     role: asEnum(users.filters.role, ROLES),
     sort: asText(users.filters.sort),
-    order: users.order === "desc" ? ("desc" as const) : undefined,
+    order: asEnum(users.filters.order, ORDERS),
   };
 
-  const fetchPage = useCallback(
-    (page: number, pageSize: number) =>
-      listUsers({ ...activeQuery, page, pageSize }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [activeQuery.search, activeQuery.role, activeQuery.sort, activeQuery.order],
-  );
 
   const csv = useCsvExport({
-    fetchPage,
+    fetchPage: (page, pageSize) =>
+      listUsers({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "users",
@@ -117,8 +113,8 @@ export default function UsersList() {
         <div className="flex min-w-0 items-center gap-2.5">
           <Avatar name={user.name} seed={user.email} />
           <div className="min-w-0">
-            <p className="truncate font-medium text-zinc-900">{user.name}</p>
-            <p className="truncate text-xs text-zinc-500">{user.email}</p>
+            <p className="truncate font-medium text-foreground">{user.name}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
           </div>
         </div>
       ),
@@ -126,26 +122,26 @@ export default function UsersList() {
     {
       key: "phone",
       header: "Phone",
-      className: "numeric w-32 text-zinc-600",
+      className: "numeric w-32 text-muted-foreground",
       cell: (user) => user.phone || "—",
     },
     {
       key: "college",
       header: "College",
-      className: "text-zinc-600",
+      className: "text-muted-foreground",
       cell: (user) => user.college || "—",
     },
     {
       key: "district",
       header: "District",
-      className: "w-32 text-zinc-600",
+      className: "w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (user) => user.district || "—",
     },
     {
       key: "referral",
       header: "Referral",
-      className: "numeric w-28 text-zinc-500",
+      className: "numeric w-28 text-muted-foreground",
       cell: (user) => user.referral,
     },
     {
@@ -158,7 +154,7 @@ export default function UsersList() {
       key: "createdAt",
       sortKey: "createdAt",
       header: "Joined",
-      className: "numeric w-32 text-zinc-500",
+      className: "numeric w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (user) => formatDate(user.createdAt),
     },
@@ -205,7 +201,7 @@ export default function UsersList() {
             <option value="">All roles</option>
             {ROLES.map((role) => (
               <option key={role} value={role}>
-                {role}
+                {roleLabel(role)}
               </option>
             ))}
           </Select>
@@ -222,12 +218,12 @@ export default function UsersList() {
       </div>
 
       {csv.error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
           Export failed. {csv.error.message}
         </p>
       ) : null}
       {csv.truncated ? (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Export stopped at 2000 rows. Narrow the filters to get the rest.
         </p>
       ) : null}
@@ -236,7 +232,7 @@ export default function UsersList() {
         <DistributionBar
           segments={roleSplit}
           trailing={
-            <span className="numeric text-xs text-zinc-500">
+            <span className="numeric text-xs text-muted-foreground">
               {users.total} total
             </span>
           }

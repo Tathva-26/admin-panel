@@ -1,4 +1,5 @@
 import Badge, { type BadgeTone } from "@/components/ui/Badge";
+import { bookingStatusLabel, roleLabel } from "@/lib/labels";
 import type { BookingStatus, Role } from "@/types";
 
 /**
@@ -14,7 +15,11 @@ const BOOKING_TONES: Record<BookingStatus, BadgeTone> = {
 };
 
 export function BookingStatusBadge({ status }: { status: BookingStatus }) {
-  return <Badge tone={BOOKING_TONES[status] ?? "neutral"}>{status}</Badge>;
+  return (
+    <Badge tone={BOOKING_TONES[status] ?? "neutral"}>
+      {bookingStatusLabel(status)}
+    </Badge>
+  );
 }
 
 export function PublishedBadge({ published }: { published: boolean }) {
@@ -26,5 +31,7 @@ export function PublishedBadge({ published }: { published: boolean }) {
 }
 
 export function RoleBadge({ role }: { role: Role }) {
-  return <Badge tone={role === "ADMIN" ? "blue" : "neutral"}>{role}</Badge>;
+  return (
+    <Badge tone={role === "ADMIN" ? "blue" : "neutral"}>{roleLabel(role)}</Badge>
+  );
 }
