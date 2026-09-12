@@ -104,7 +104,14 @@ export function fieldErrors(error: ApiError | null): Record<string, string> {
 
   const map: Record<string, string> = {};
   for (const issue of error.issues) {
-    if (!(issue.path in map)) map[issue.path] = issue.message;
+    if (!(issue.path in map)) {
+      map[issue.path] =
+        /^Too small: expected string to have >=\s*1 characters?$/.test(
+          issue.message,
+        )
+          ? "This field is required."
+          : issue.message;
+    }
   }
   return map;
 }
