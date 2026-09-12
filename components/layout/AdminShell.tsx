@@ -32,8 +32,8 @@ function AdminShellContent({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className='flex h-dvh items-center justify-center bg-zinc-50'>
-        <Spinner className='h-8 w-8 text-zinc-900' />
+      <div className='flex h-dvh items-center justify-center bg-background'>
+        <Spinner className='h-8 w-8 text-foreground' />
       </div>
     )
   }
@@ -43,7 +43,7 @@ function AdminShellContent({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className='flex h-dvh overflow-hidden bg-[#EEEEEE]'>
+    <div className='flex h-dvh overflow-hidden bg-background'>
       <Sidebar open={navOpen} onNavigate={() => setNavOpen(false)} />
 
       <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
