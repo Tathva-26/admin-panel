@@ -109,8 +109,8 @@ export default function VenuesList() {
       cell: (venue) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-foreground">{venue.name}</p>
-          {venue.address ? (
-            <p className="truncate text-xs text-muted-foreground">{venue.address}</p>
+          {venue.location ? (
+            <p className="truncate text-xs text-muted-foreground">{venue.location}</p>
           ) : null}
         </div>
       ),

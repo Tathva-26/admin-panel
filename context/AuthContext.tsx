@@ -85,11 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void Promise.resolve().then(verifySession);
   }, [verifySession]);
 
-const logout = useCallback(() => {
-  setUser(null);
-  setIsUnauthorized(false);
-  apiLogout();
-}, []);
+  const logout = useCallback(() => {
+    setUser(null);
+    setIsUnauthorized(false);
+  }, []);
+
   /*
    * Memoised so the provider does not hand out a new object on every render.
    * Without it every useAuth consumer — the shell, the topbar, the callback
