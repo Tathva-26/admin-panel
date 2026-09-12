@@ -45,7 +45,7 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 /* ------------------------------------------------------------------ */
@@ -66,9 +66,13 @@ export type QueryParams = Record<
 function cleanParams(params?: QueryParams): QueryParams | undefined {
   if (!params) return undefined;
 
-  const cleaned = Object.entries(params).filter(
-    ([, value]) => value !== undefined && value !== null && value !== "",
-  );
+  const cleaned = Object.entries(params)
+    .filter(
+      ([, value]) => value !== undefined && value !== null && value !== "",
+    )
+    .map(
+      ([key, value]) => [key === "pageSize" ? "limit" : key, value] as const,
+    );
 
   return cleaned.length ? Object.fromEntries(cleaned) : undefined;
 }
@@ -80,12 +84,92 @@ function cleanParams(params?: QueryParams): QueryParams | undefined {
  *
  * If the key is absent from the response the body is returned as-is, so a
  * backend that stops wrapping (or has not started yet) does not crash the UI.
+ *
+ * Also tries common alternative keys ("data", "result") if the primary key
+ * is not found, to handle backends with different wrapping conventions.
  */
 function unwrap<T>(data: unknown, key?: string): T {
   if (key && data && typeof data === "object" && key in data) {
     return (data as Record<string, unknown>)[key] as T;
   }
+
+  // Try common alternative wrapping keys
+  const altKeys = ["data", "result"];
+  for (const altKey of altKeys) {
+    if (data && typeof data === "object" && altKey in data) {
+      return (data as Record<string, unknown>)[altKey] as T;
+    }
+  }
+
   return data as T;
+}
+
+/** Converts backend-v2 list envelopes to the shape used by the UI. */
+function normalizeList<T>(data: T): T {
+  if (!data || typeof data !== "object") return data;
+
+  const value = data as Record<string, unknown>;
+  if (Array.isArray(value.items)) return data;
+
+  const resourceKey = [
+    "events",
+    "venues",
+    "announcements",
+    "users",
+    "bookings",
+    "contacts",
+  ].find((candidate) => Array.isArray(value[candidate]));
+
+  if (!resourceKey) return data;
+
+  const items = value[resourceKey] as unknown[];
+  const normalizedItems =
+    resourceKey === "bookings"
+      ? items.map((item) => {
+          const booking = item as Record<string, unknown>;
+          const user = (booking.user ?? {}) as Record<string, unknown>;
+          const event = (booking.event ?? null) as Record<
+            string,
+            unknown
+          > | null;
+          const amount = Number(booking.amountTotal ?? 0);
+
+          return {
+            ...booking,
+            kind: booking.kind ?? (booking.eventId ? "EVENT" : "ACCOMMODATION"),
+            qty: booking.qty ?? booking.quantity ?? 1,
+            amountSubtotal: Number(booking.amountSubtotal ?? 0),
+            amountFee: Number(booking.amountFee ?? 0),
+            amountTax: Number(booking.amountTax ?? 0),
+            amountTotal: amount,
+            currency: booking.currency ?? "INR",
+            user: {
+              id: user.id ?? 0,
+              name: user.name ?? "Unknown user",
+              email: user.email ?? "",
+            },
+            event: event
+              ? {
+                  id: event.id,
+                  heading: event.heading,
+                  type: event.type,
+                }
+              : null,
+            accommodation: booking.accommodation ?? null,
+          };
+        })
+      : items;
+  const pagination = value.pagination as Record<string, unknown> | undefined;
+  const page = Number(pagination?.page ?? 1);
+  const pageSize = Number(pagination?.limit ?? items.length);
+  const total = Number(pagination?.total ?? items.length);
+
+  return {
+    items: normalizedItems,
+    page,
+    pageSize,
+    total,
+  } as T;
 }
 
 export async function get<T>(
@@ -94,7 +178,7 @@ export async function get<T>(
   key?: string,
 ): Promise<T> {
   const res = await api.get(path, { params: cleanParams(params) });
-  return unwrap<T>(res.data, key);
+  return normalizeList(unwrap<T>(res.data, key));
 }
 
 export async function post<T>(

@@ -15,7 +15,6 @@ interface VenueScheduleModalProps {
   onClose: () => void;
 }
 
-
 /**
  * Everything scheduled at one venue, in order, with the current moment marked.
  *
@@ -31,16 +30,14 @@ export default function VenueScheduleModal({
   onClose,
 }: VenueScheduleModalProps) {
   const slots = toSlots(events);
-  const undated = events.filter(
-    (event) => !event.startTime && !event.datetime,
-  );
+  const undated = events.filter((event) => !event.startTime && !event.datetime);
 
   return (
     <Modal
       open
       onClose={onClose}
       title={`Schedule — ${venue.name}`}
-      description={venue.address ?? undefined}
+      description={venue.location ?? undefined}
       footer={
         <Button size="sm" onClick={onClose}>
           Close

@@ -99,8 +99,8 @@ export default function VenuesList() {
       cell: (venue) => (
         <div className="min-w-0">
           <p className="truncate font-medium text-zinc-900">{venue.name}</p>
-          {venue.address ? (
-            <p className="truncate text-xs text-zinc-500">{venue.address}</p>
+          {venue.location ? (
+            <p className="truncate text-xs text-zinc-500">{venue.location}</p>
           ) : null}
         </div>
       ),

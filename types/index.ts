@@ -70,7 +70,8 @@ export type EventType = (typeof EVENT_TYPES)[number];
 export interface EventVenue {
   id: number;
   name: string;
-  address: string | null;
+  location: string | null;
+  locId?: number | null;
 }
 
 export interface AdminEvent {
@@ -134,16 +135,14 @@ export type EventQuery = ListQuery & {
 export interface Venue {
   id: number;
   name: string;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
+  location: string | null;
+  locId: number | null;
 }
 
 export interface VenueInput {
   name: string;
-  address?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
+  location?: string | null;
+  locId?: number | null;
 }
 
 /* ------------------------------------------------------------------ */
