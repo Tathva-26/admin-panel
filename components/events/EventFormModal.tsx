@@ -103,6 +103,11 @@ function EventFormDialog({
     event ? paiseToRupeeInput(event.price) : "0.00",
   );
   const [priceError, setPriceError] = useState<string | undefined>();
+  const [clientErrors, setClientErrors] = useState<Record<string, string>>({});
+  const [imageMode, setImageMode] = useState<"url" | "upload">(() =>
+    event?.picture?.startsWith("data:image/") ? "upload" : "url",
+  );
+  const [imageError, setImageError] = useState<string | undefined>();
 
   const [dateInput, setDateInput] = useState(() =>
     isoToDateInput(event?.startTime ?? event?.datetime),
@@ -182,11 +187,31 @@ function EventFormDialog({
     const endIso = dateTimeInputToIso(`${dateInput}T${newTime}`);
     set("endTime", endIso);
   }
-    useEffect(() => {
+
+  function handleImageUpload(file?: File) {
+    setImageError(undefined);
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setImageError("Choose an image file.");
+      return;
+    }
+    if (file.size > 1_000_000) {
+      setImageError("Choose an image smaller than 1 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => set("picture", String(reader.result));
+    reader.onerror = () => setImageError("The image could not be read.");
+    reader.readAsDataURL(file);
+  }
+
+  useEffect(() => {
     if (mutation.error?.status === 409) {
       onSaved();
     }
-    }, [mutation.error, onSaved]);
+  }, [mutation.error, onSaved]);
+
   async function handleSubmit() {
     const paise = rupeeInputToPaise(priceInput);
     if (paise === null) {
@@ -226,6 +251,27 @@ function EventFormDialog({
       body.teamSize = null;
     }
 
+    if (!isEdit) {
+      const nextErrors: Record<string, string> = {};
+      if (!body.heading.trim()) nextErrors.heading = "Enter an event heading.";
+      if (!body.description?.trim()) nextErrors.description = "Enter a description.";
+      if (!body.catchyPara?.trim()) nextErrors.catchyPara = "Enter a catchy paragraph.";
+      if (!body.picture) nextErrors.picture = "Add an image URL or upload an image.";
+      if (!dateInput) nextErrors.datetime = "Choose a date.";
+      if (!startTimeInput) nextErrors.startTime = "Choose a start time.";
+      if (body.capacity == null) nextErrors.capacity = "Enter a capacity.";
+      if (body.venueId == null) nextErrors.venueId = "Choose a venue.";
+      if (!body.committee?.trim()) nextErrors.committee = "Enter a committee.";
+      if (body.ticketId == null) nextErrors.ticketId = "Enter a ticket ID.";
+      if (body.isTeamEvent && body.teamSize == null) {
+        nextErrors.teamSize = "Enter a team size.";
+      }
+
+      setClientErrors(nextErrors);
+      if (Object.keys(nextErrors).length > 0) return;
+    }
+    setClientErrors({});
+
     if (isEdit && event) {
       const original = eventToForm(event);
       const changed: Partial<EventInput> = {};
@@ -254,7 +300,7 @@ function EventFormDialog({
     }
   }
 
-  const fields = mutation.fields;
+  const fields = { ...clientErrors, ...mutation.fields };
   const venueList = venues.data?.items ?? [];
 
   return (
@@ -345,7 +391,7 @@ function EventFormDialog({
             </Field>
           </div>
 
-          <Field label="Description" error={fields.description}>
+            <Field label="Description" error={fields.description} required>
             {(props) => (
               <Textarea
                 {...props}
@@ -357,7 +403,7 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label="Catchy Paragraph" error={fields.catchyPara}>
+            <Field label="Catchy Paragraph" error={fields.catchyPara} required>
             {(props) => (
               <Input
                 {...props}
@@ -368,20 +414,65 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label="Picture URL" error={fields.picture}>
+          <Field label="Event Image" error={fields.picture ?? imageError} required>
             {(props) => (
-              <Input
-                {...props}
-                type="url"
-                value={form.picture ?? ""}
-                onChange={(e) => set("picture", e.target.value || null)}
-                placeholder="https://example.com/image.jpg"
-              />
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={imageMode === "url" ? "primary" : "ghost"}
+                    onClick={() => {
+                      setImageMode("url");
+                      if (imageMode === "upload") set("picture", null);
+                    }}
+                  >
+                    Image URL
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={imageMode === "upload" ? "primary" : "ghost"}
+                    onClick={() => {
+                      setImageMode("upload");
+                      if (imageMode === "url") set("picture", null);
+                    }}
+                  >
+                    Upload image
+                  </Button>
+                </div>
+
+                {imageMode === "url" ? (
+                  <Input
+                    {...props}
+                    type="url"
+                    value={form.picture ?? ""}
+                    onChange={(e) => set("picture", e.target.value || null)}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                ) : (
+                  <Input
+                    {...props}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                  />
+                )}
+
+                {form.picture ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={form.picture}
+                    alt="Selected event image preview"
+                    className="h-32 w-full rounded-md border border-border object-cover"
+                  />
+                ) : null}
+              </div>
             )}
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Date" error={fields.datetime}>
+            <Field label="Date" error={fields.datetime} required>
               {(props) => (
                 <Input
                   {...props}
@@ -392,7 +483,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Start Time" error={fields.startTime}>
+            <Field label="Start Time" error={fields.startTime} required>
               {(props) => (
                 <Input
                   {...props}
@@ -433,7 +524,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Capacity" error={fields.capacity}>
+            <Field label="Capacity" error={fields.capacity} required>
               {(props) => (
                 <Input
                   {...props}
@@ -451,7 +542,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Venue" error={fields.venueId}>
+            <Field label="Venue" error={fields.venueId} required>
               {(props) => (
                 <Select
                   {...props}
@@ -474,7 +565,7 @@ function EventFormDialog({
             </Field>
           </div>
 
-          <Field label="Committee" error={fields.committee}>
+          <Field label="Committee" error={fields.committee} required>
             {(props) => (
               <Input
                 {...props}
@@ -527,7 +618,7 @@ function EventFormDialog({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Ticket ID" error={fields.ticketId}>
+            <Field label="Ticket ID" error={fields.ticketId} required>
               {(props) => (
                 <Input
                   {...props}
@@ -539,7 +630,7 @@ function EventFormDialog({
                       e.target.value ? Number(e.target.value) : null,
                     )
                   }
-                  placeholder="Optional"
+                  placeholder="Existing ticket ID"
                 />
               )}
             </Field>
