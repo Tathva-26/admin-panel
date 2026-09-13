@@ -6,6 +6,8 @@ import Avatar from "@/components/common/Avatar";
 import { useAuth } from "@/context/AuthContext";
 import { roleLabel } from "@/lib/labels";
 
+import ThemeToggle from "./ThemeToggle";
+
 /**
  * Deliberately carries no page title.
  *
@@ -68,13 +70,16 @@ export default function Topbar({
         </kbd>
       </button>
 
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <ThemeToggle />
+
       {user ? (
         // A link, not a div. It looked pressable and did nothing, which is a
         // worse offence than not looking pressable at all.
         <Link
           href="/profile"
           aria-label="Your profile"
-          className="ml-auto flex shrink-0 items-center gap-2 rounded-md border border-border bg-card py-1 pr-2.5 pl-1 transition-colors hover:border-input hover:bg-muted"
+          className="flex shrink-0 items-center gap-2 rounded-md border border-border bg-card py-1 pr-2.5 pl-1 transition-colors hover:border-input hover:bg-muted"
         >
           <Avatar name={user.name} seed={user.email} className="h-6 w-6" />
           {/* Truncated, so a long name cannot push the chip off the bar. The
@@ -87,6 +92,7 @@ export default function Topbar({
           </div>
         </Link>
       ) : null}
+      </div>
     </header>
   );
 }

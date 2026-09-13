@@ -57,29 +57,15 @@
 }
 
 /*
- * Internal tool: light mode only, on purpose. Nobody is using this on a phone
- * in a dark room, and supporting both doubles the surface for no benefit.
- */
-/*
- * No background here on purpose. AdminShell paints the app surface, and a
- * second colour underneath only shows through as a mismatched edge when the
- * shell does not cover the viewport.
+ * Colours come from the tokens below, never hardcoded here: a rule outside
+ * @layer would beat the @apply in @layer base and pin the page to one theme.
  */
 body {
   isolation: isolate;
   position: relative;
-  background: #ffffff;
-  color: #000000;
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
-}
-
-body::before,
-body::after {
-  content: "";
-  position: fixed;
-  pointer-events: none;
-  inset: 0;
-  display: none;
 }
 
 body > * {
@@ -138,44 +124,51 @@ body > * {
 /*
  ---break---
  */
+/*
+ * Dark palette: a zinc ramp matching the "neutral" base in components.json.
+ *
+ * Two inversions follow the shadcn convention — `--primary` flips to near-white
+ * so primary buttons stay highest-contrast, and status colours move a step
+ * brighter, since 600-weights tuned for white go muddy on near-black.
+ */
 .dark {
-  --background: #ffffff;
-  --foreground: #000000;
-  --card: #ffffff;
-  --card-foreground: #000000;
-  --popover: #ffffff;
-  --popover-foreground: #000000;
-  --primary: #000000;
-  --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #000000;
-  --muted: #f4f4f5;
-  --muted-foreground: #000000;
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
   --accent: #27272a;
-  --accent-foreground: #ffffff;
-  --destructive: #dc2626;
-  --success: #16a34a;
-  --success-foreground: #ffffff;
-  --warning: #ca8a04;
-  --warning-foreground: #ffffff;
-  --info: #2563eb;
-  --info-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #000000;
-  --chart-1: #18181b;
-  --chart-2: #71717a;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --success: #4ade80;
+  --success-foreground: #052e16;
+  --warning: #facc15;
+  --warning-foreground: #422006;
+  --info: #60a5fa;
+  --info-foreground: #0b1220;
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #d4d4d8;
+  --chart-1: #fafafa;
+  --chart-2: #d4d4d8;
   --chart-3: #a1a1aa;
-  --chart-4: #d4d4d8;
-  --chart-5: #e4e4e7;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #000000;
-  --sidebar-primary: #000000;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: #000000;
+  --chart-4: #71717a;
+  --chart-5: #52525b;
+  --sidebar: #18181b;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #fafafa;
+  --sidebar-primary-foreground: #18181b;
+  --sidebar-accent: #27272a;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #d4d4d8;
 }
 /*
  ---break---
