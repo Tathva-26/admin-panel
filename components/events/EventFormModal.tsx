@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Button from '@/components/ui/Button'
@@ -124,11 +124,8 @@ function EventFormDialog({
 
   const mutation = isEdit ? update : create
 
-  useEffect(() => {
-    if (mutation.error?.status === 409) {
-      onSaved()
-    }
-  }, [mutation.error, onSaved])
+  // A 409 means the save did not happen, so it is reported in the banner below
+  // and nothing else moves.
 
   const set = <K extends keyof EventInput>(key: K, value: EventInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -256,18 +253,23 @@ function EventFormDialog({
         footer={
           <div className='flex w-full items-center justify-between'>
             <div>
-              {isEdit && event ? (
+              {/*
+                Named "Archive", but DELETE /admin/events/:id only sets
+                published:false — the same thing unpublish does. Say what it
+                does, and only offer it when there is something to unpublish.
+              */}
+              {isEdit && event?.published ? (
                 <Button
                   size='sm'
                   variant='ghost'
-                  className='text-red-600 hover:bg-red-50 hover:text-red-700'
+                  className='text-destructive hover:bg-destructive/10 hover:text-destructive'
                   disabled={mutation.loading || archive.loading}
                   onClick={() => {
                     archive.reset()
                     setArchiveOpen(true)
                   }}
                 >
-                  Archive
+                  Unpublish
                 </Button>
               ) : null}
             </div>
@@ -293,9 +295,28 @@ function EventFormDialog({
         }
       >
         {mutation.error && mutation.error.issues.length === 0 ? (
-          <p className='mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
-            {apiErrorMessage(mutation.error)}
-          </p>
+          <div className='mb-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive'>
+            <p>{apiErrorMessage(mutation.error)}</p>
+
+            {/*
+             * The backend's 409 is a bare Prisma P2002 handler that drops
+             * err.meta.target, so the message never names a field — and on
+             * create it is not a duplicate at all. The Event id sequence is
+             * behind the rows already in the table, so the insert collides with
+             * an existing primary key. Nothing about the form causes it and
+             * nothing in the form can avoid it.
+             */}
+            {!isEdit && mutation.error.status === 409 ? (
+              <p className='mt-1 text-xs'>
+                Despite the wording, this is almost certainly not a duplicate —
+                no field on an event has to be unique. The event ID counter on
+                the server has fallen behind the existing rows, so new events
+                collide with IDs that are already taken. It needs a backend fix;
+                retrying will keep failing until the counter passes the highest
+                existing ID.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         <div className='space-y-4'>
@@ -353,104 +374,44 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label='Picture' error={fields.picture}>
+          {/*
+            This was a drag-and-drop uploader posting to a relative /api/upload.
+            The panel has no app/api directory, so every drop hit Next's HTML
+            404, res.ok was false, and the handler returned without a word —
+            the field could never be set and never said why. There is no object
+            storage configured to upload to, so the honest control is the URL
+            the backend actually stores: `picture` is just a string column.
+          */}
+          <Field label='Picture URL' error={fields.picture}>
             {(props) => (
-              <div
+              <Input
                 {...props}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
-                }}
-                onDragLeave={(e) => {
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-                }}
-                onDrop={async (e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-
-                  const file = e.dataTransfer.files?.[0]
-
-                  if (!file || !file.type.startsWith('image/')) {
-                    return
-                  }
-
-                  // Upload the image here
-                  const formData = new FormData()
-                  formData.append('file', file)
-
-                  const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                  })
-
-                  if (!res.ok) {
-                    return
-                  }
-
-                  const data = await res.json()
-                  set('picture', data.url)
-                }}
-                className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
-                onClick={() =>
-                  document.getElementById('picture-upload')?.click()
-                }
-              >
-                <input
-                  id='picture-upload'
-                  type='file'
-                  accept='image/*'
-                  className='hidden'
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-
-                    if (!file) return
-
-                    const formData = new FormData()
-                    formData.append('file', file)
-
-                    const res = await fetch('/api/upload', {
-                      method: 'POST',
-                      body: formData,
-                    })
-
-                    if (!res.ok) return
-
-                    const data = await res.json()
-                    set('picture', data.url)
-                  }}
-                />
-
-                {form.picture ? (
-                  <div className='space-y-3'>
-                    <img
-                      src={form.picture}
-                      alt='Preview'
-                      className='mx-auto h-32 w-32 rounded-lg object-cover'
-                    />
-                    <p className='text-xs text-zinc-500'>
-                      Click or drop another image to replace
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <p className='text-sm font-medium text-zinc-700'>
-                      Drag & drop an image here
-                    </p>
-                    <p className='mt-1 text-xs text-zinc-500'>
-                      or click to browse
-                    </p>
-                    <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
-                  </>
-                )}
-              </div>
+                type='url'
+                inputMode='url'
+                value={form.picture ?? ''}
+                onChange={(e) => set('picture', e.target.value)}
+                placeholder='https://images.tiqr.events/…'
+              />
             )}
           </Field>
+
+          {form.picture ? (
+            <div className='flex items-center gap-3'>
+              {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary
+                  external host; next/image would need it in remotePatterns. */}
+              <img
+                src={form.picture}
+                alt=''
+                className='h-20 w-20 rounded-lg border border-border object-cover'
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+              <p className='text-xs text-muted-foreground'>
+                Preview. If nothing appears, the URL is not reachable.
+              </p>
+            </div>
+          ) : null}
 
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
             <Field label='Date' error={fields.datetime}>
@@ -556,15 +517,33 @@ function EventFormDialog({
               />
             )}
           </Field>
+
+          {/* Parity with the announcement form, which has had this all along.
+              Creating still defaults to draft — blankForm() sets published:false. */}
+          <div className='flex items-center gap-3'>
+            <input
+              type='checkbox'
+              id='event-published'
+              checked={form.published ?? false}
+              onChange={(e) => set('published', e.target.checked)}
+              className='h-4 w-4 rounded border-input accent-primary'
+            />
+            <label
+              htmlFor='event-published'
+              className='text-sm font-medium text-foreground'
+            >
+              {isEdit ? 'Published' : 'Publish immediately'}
+            </label>
+          </div>
         </div>
       </Modal>
 
       {isEdit && event ? (
         <ConfirmDialog
           open={archiveOpen}
-          title='Archive Event'
-          description={`Archive "${event.heading}"? This will remove the event from listings.`}
-          confirmLabel='Archive'
+          title='Unpublish event'
+          description={`Unpublish "${event.heading}"? It stays in the admin list as a draft and comes off the public site.`}
+          confirmLabel='Unpublish'
           destructive
           loading={archive.loading}
           error={archive.error}
@@ -603,7 +582,7 @@ function EventFormLoader({
     return (
       <Modal open={true} onClose={onClose} title='Loading Event'>
         <div className='flex justify-center py-12'>
-          <Spinner className='h-8 w-8 text-zinc-900' />
+          <Spinner className='h-8 w-8 text-foreground' />
         </div>
       </Modal>
     )

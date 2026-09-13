@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
-import Button from "@/components/ui/Button";
+import RowActionsMenu, {
+  type RowAction,
+} from "@/components/common/RowActionsMenu";
 import { useMutation } from "@/hooks/useMutation";
 import {
   deleteAnnouncement,
@@ -26,45 +28,28 @@ export default function AnnouncementRowActions({
   onMutated,
   onError,
 }: AnnouncementRowActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [toggling, setToggling] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
 
   const remove = useMutation((id: number) => deleteAnnouncement(id));
 
   const busy = toggling || remove.loading;
 
-  const handlePublishToggle = useCallback(async () => {
-    setMenuOpen(false);
-    setToggling(true);
-    try {
-      if (announcement.published) {
-        await unpublishAnnouncement(announcement.id);
-      } else {
-        await publishAnnouncement(announcement.id);
+  const setPublished = useCallback(
+    async (next: boolean) => {
+      setToggling(true);
+      try {
+        if (next) await publishAnnouncement(announcement.id);
+        else await unpublishAnnouncement(announcement.id);
+        onMutated();
+      } catch (err) {
+        onError?.(next ? "Publish" : "Unpublish", toApiError(err));
+      } finally {
+        setToggling(false);
       }
-      onMutated();
-    } catch (err) {
-      onError?.(
-        announcement.published ? "Unpublish" : "Publish",
-        toApiError(err),
-      );
-    } finally {
-      setToggling(false);
-    }
-  }, [announcement, onMutated, onError]);
+    },
+    [announcement.id, onMutated, onError],
+  );
 
   const handleDelete = useCallback(async () => {
     const result = await remove.run(announcement.id);
@@ -74,66 +59,41 @@ export default function AnnouncementRowActions({
     }
   }, [announcement.id, remove, onMutated]);
 
+  const actions: RowAction[] = [
+    { label: "Edit", onClick: () => onEdit(announcement) },
+    {
+      label: "Publish",
+      onClick: () => setPublished(true),
+      disabled: announcement.published,
+      disabledReason: "Already published.",
+    },
+    {
+      label: "Unpublish",
+      onClick: () => setPublished(false),
+      disabled: !announcement.published,
+      disabledReason: "Already a draft.",
+    },
+    {
+      label: "Delete",
+      onClick: () => {
+        remove.reset();
+        setDeleteOpen(true);
+      },
+      // Deletion is permanent here (the backend really does drop the row), so
+      // it stays behind the draft state — unpublish first, then delete.
+      disabled: announcement.published,
+      disabledReason: "Unpublish it first — published announcements can't be deleted.",
+      destructive: true,
+    },
+  ];
+
   return (
     <>
-      <div className="relative" ref={menuRef}>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-label="Row actions"
-          className="h-7 w-7 p-0"
-        >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <circle cx="10" cy="4" r="1.5" />
-            <circle cx="10" cy="10" r="1.5" />
-            <circle cx="10" cy="16" r="1.5" />
-          </svg>
-        </Button>
-
-        {menuOpen ? (
-          <div className="absolute right-0 top-full z-30 mt-1 w-40 rounded-md border border-border bg-popover py-1 shadow-lg">
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted"
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(announcement);
-              }}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
-              disabled={busy}
-              onClick={handlePublishToggle}
-            >
-              {announcement.published ? "Unpublish" : "Publish"}
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setMenuOpen(false);
-                remove.reset();
-                setDeleteOpen(true);
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <RowActionsMenu actions={actions} busy={busy} />
 
       <ConfirmDialog
         open={deleteOpen}
-        title="Delete Announcement"
+        title="Delete announcement"
         description={`Delete "${announcement.title}"? This cannot be undone.`}
         confirmLabel="Delete"
         destructive

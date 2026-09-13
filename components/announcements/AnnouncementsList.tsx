@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
+import SearchInput from "@/components/common/SearchInput";
 import { PublishedBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
@@ -29,7 +30,8 @@ import BulkActionBar from "@/components/common/BulkActionBar";
 interface BulkOutcome {
   action: string;
   succeeded: number;
-  failures: { id: number; message: string }[];
+  /** `label` names the announcement; a bare id tells the reader nothing. */
+  failures: { label: string; message: string }[];
 }
 
 export default function AnnouncementsList() {
@@ -85,37 +87,50 @@ export default function AnnouncementsList() {
     refreshDashboard();
   }, [refetchAnnouncements]);
 
-  const handleRowError = useCallback((action: string, err: ApiError) => {
-    setOutcome({
-      action,
-      succeeded: 0,
-      failures: [{ id: 0, message: apiErrorMessage(err) }],
-    });
-  }, []);
+  const handleRowError = useCallback(
+    (action: string, err: ApiError, label: string) => {
+      setOutcome({
+        action,
+        succeeded: 0,
+        failures: [{ label, message: apiErrorMessage(err) }],
+      });
+    },
+    [],
+  );
 
   const targets = announcements.items.filter((a) => selected.has(a.id));
 
+  // Only rows that would actually change, so a mixed selection fires the
+  // minimum number of requests rather than one per selected row.
+  const toPublish = targets.filter((a) => !a.published);
+  const toUnpublish = targets.filter((a) => a.published);
+
   async function runBulk(
     action: string,
+    rows: Announcement[],
     call: (id: number) => Promise<unknown>,
   ) {
-    const ids = targets.map((a) => a.id);
-    if (ids.length === 0) return;
+    if (rows.length === 0) return;
 
     setBusy(true);
     setOutcome(null);
 
-    const results = await Promise.allSettled(ids.map((id) => call(id)));
+    const results = await Promise.allSettled(rows.map((row) => call(row.id)));
 
     const failures = results.flatMap((result, index) =>
       result.status === "rejected"
-        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
+        ? [
+            {
+              label: rows[index].title,
+              message: apiErrorMessage(toApiError(result.reason)),
+            },
+          ]
         : [],
     );
 
     setBusy(false);
     setSelected(new Set());
-    setOutcome({ action, succeeded: ids.length - failures.length, failures });
+    setOutcome({ action, succeeded: rows.length - failures.length, failures });
     refetchAnnouncements();
     refreshDashboard();
   }
@@ -180,7 +195,7 @@ const columns: Column<Announcement>[] = [
           announcement={a}
           onEdit={handleEdit}
           onMutated={handleMutated}
-          onError={handleRowError}
+          onError={(action, err) => handleRowError(action, err, a.title)}
         />
       ),
     },
@@ -189,6 +204,15 @@ const columns: Column<Announcement>[] = [
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        {/* The list already read filters.search and the command palette already
+            linked to ?search=… — only the input itself was missing, so search
+            was reachable solely by editing the URL by hand. */}
+        <SearchInput
+          value={announcements.filters.search ?? ""}
+          onChange={(value) => announcements.setFilter("search", value)}
+          placeholder="Search announcements…"
+        />
+
         <div className="flex gap-2">
           <Select
             aria-label="Filter by state"
@@ -203,7 +227,6 @@ const columns: Column<Announcement>[] = [
             <option value="false">Draft</option>
           </Select>
         </div>
-
       </div>
 
       {outcome ? (
@@ -214,18 +237,28 @@ const columns: Column<Announcement>[] = [
               : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
-          <p>
-            {outcome.action}: {outcome.succeeded} succeeded
-            {outcome.failures.length > 0
-              ? `, ${outcome.failures.length} failed`
-              : ""}
-            .
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p>
+              {outcome.action}: {outcome.succeeded} succeeded
+              {outcome.failures.length > 0
+                ? `, ${outcome.failures.length} failed`
+                : ""}
+              .
+            </p>
+            <button
+              type="button"
+              onClick={() => setOutcome(null)}
+              aria-label="Dismiss"
+              className="-mr-1 -mt-0.5 shrink-0 rounded px-1.5 text-lg leading-none opacity-60 transition-opacity hover:opacity-100"
+            >
+              &times;
+            </button>
+          </div>
           {outcome.failures.length > 0 ? (
             <ul className="mt-1 list-inside list-disc">
               {outcome.failures.map((failure) => (
-                <li key={failure.id} className="numeric text-xs">
-                  #{failure.id} — {failure.message}
+                <li key={failure.label} className="text-xs">
+                  {failure.label} — {failure.message}
                 </li>
               ))}
             </ul>
@@ -267,16 +300,28 @@ const columns: Column<Announcement>[] = [
           size="sm"
           variant="primary"
           loading={busy}
-          onClick={() => runBulk("Publish", publishAnnouncement)}
+          disabled={toPublish.length === 0}
+          title={
+            toPublish.length === 0
+              ? "Everything selected is already published."
+              : undefined
+          }
+          onClick={() => runBulk("Publish", toPublish, publishAnnouncement)}
         >
-          Publish
+          Publish{toPublish.length > 0 ? ` (${toPublish.length})` : ""}
         </Button>
         <Button
           size="sm"
           loading={busy}
-          onClick={() => runBulk("Unpublish", unpublishAnnouncement)}
+          disabled={toUnpublish.length === 0}
+          title={
+            toUnpublish.length === 0
+              ? "Everything selected is already a draft."
+              : undefined
+          }
+          onClick={() => runBulk("Unpublish", toUnpublish, unpublishAnnouncement)}
         >
-          Unpublish
+          Unpublish{toUnpublish.length > 0 ? ` (${toUnpublish.length})` : ""}
         </Button>
       </BulkActionBar>
 
