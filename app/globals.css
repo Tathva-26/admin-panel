@@ -57,20 +57,20 @@
 }
 
 /*
- * Internal tool: light mode only, on purpose. Nobody is using this on a phone
- * in a dark room, and supporting both doubles the surface for no benefit.
- */
-/*
- * No background here on purpose. AdminShell paints the app surface, and a
- * second colour underneath only shows through as a mismatched edge when the
- * shell does not cover the viewport.
+ * Body base styles. The dark-mode ambient gradients are toggled via the
+ * `.dark` class on <html>.
  */
 body {
   isolation: isolate;
   position: relative;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.dark body {
   background: #060708;
   color: #fff;
-  font-family: var(--font-sans), system-ui, sans-serif;
 }
 
 body::before,
@@ -79,9 +79,15 @@ body::after {
   position: fixed;
   pointer-events: none;
   inset: 0;
+  display: none;
 }
 
-body::before {
+.dark body::before,
+.dark body::after {
+  display: block;
+}
+
+.dark body::before {
   z-index: 0;
   background:
     radial-gradient(circle at 14% 12%, rgb(102 75 47 / 10%), transparent 30rem),
@@ -89,7 +95,7 @@ body::before {
     linear-gradient(115deg, #070809 0%, #050607 52%, #08090a 100%);
 }
 
-body::after {
+.dark body::after {
   z-index: 0;
   opacity: 0.42;
   background-image:
@@ -115,6 +121,49 @@ body > * {
  ---break---
  */
 :root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #000000;
+  --muted: #f4f4f5;
+  --muted-foreground: #000000;
+  --accent: #27272a;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #ca8a04;
+  --warning-foreground: #ffffff;
+  --info: #2563eb;
+  --info-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #000000;
+  --chart-1: #18181b;
+  --chart-2: #71717a;
+  --chart-3: #a1a1aa;
+  --chart-4: #d4d4d8;
+  --chart-5: #e4e4e7;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #000000;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f4f4f5;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #e4e4e7;
+  --sidebar-ring: #000000;
+}
+/*
+ ---break---
+ */
+.dark {
   --background: oklch(0.045 0.006 95);
   --foreground: #fff;
   --card: oklch(0.105 0.008 90);
@@ -144,7 +193,6 @@ body > * {
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
   --sidebar: oklch(0.075 0.007 90);
   --sidebar-foreground: #fff;
   --sidebar-primary: oklch(0.89 0.045 85);
@@ -153,48 +201,6 @@ body > * {
   --sidebar-accent-foreground: #fff;
   --sidebar-border: oklch(0.2 0.012 90);
   --sidebar-ring: oklch(0.72 0.07 72);
-}
-/*
- ---break---
- */
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --success: oklch(0.66 0.14 153);
-  --success-foreground: oklch(0.12 0.01 153);
-  --warning: oklch(0.78 0.14 85);
-  --warning-foreground: oklch(0.16 0.01 85);
-  --info: oklch(0.7 0.12 245);
-  --info-foreground: oklch(0.12 0.01 245);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 /*
  ---break---

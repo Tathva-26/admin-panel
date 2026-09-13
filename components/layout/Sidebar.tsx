@@ -69,6 +69,7 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
 
+
   return (
     <>
       {open ? (
@@ -140,8 +141,9 @@ export default function Sidebar({ open, onNavigate }: SidebarProps) {
           })}
         </nav>
 
-        {/* Logout Footer */}
-        <div className="border-t border-border p-3">
+        {/* Footer */}
+        <div className="border-t border-border p-3 space-y-1">
+
           <button
             type="button"
             onClick={logout}

@@ -12,6 +12,7 @@ import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { listBookings } from "@/lib/api/bookings";
 import { useList } from "@/hooks/useList";
+import { refreshDashboard } from "@/lib/refresh";
 import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
 import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 import { asEnum, asNumber, asText } from "@/lib/params";
@@ -359,6 +360,7 @@ export default function BookingsList() {
           onSaved={() => {
             setEditing(null);
             bookings.refetch();
+            refreshDashboard();
           }}
         />
       ) : null}

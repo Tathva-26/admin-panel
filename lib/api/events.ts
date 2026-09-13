@@ -22,10 +22,10 @@ export const updateEvent = (id: number, body: Partial<EventInput>) =>
   patch<AdminEvent>(`${BASE}/${id}`, body, "event");
 
 export const publishEvent = (id: number) =>
-  post<AdminEvent>(`${BASE}/${id}/publish`, {}, "event");
+  post<AdminEvent>(`${BASE}/${id}/publish`, undefined, "event");
 
 export const unpublishEvent = (id: number) =>
-  post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
+  post<AdminEvent>(`${BASE}/${id}/unpublish`, undefined, "event");
 
 /** Archive, not a guaranteed physical delete — refetch rather than assume. */
 export const archiveEvent = (id: number) => del(`${BASE}/${id}`);

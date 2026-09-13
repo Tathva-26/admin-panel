@@ -176,7 +176,7 @@ export default function CommandPalette({
           next.push({
             id: `venue:${venue.id}`,
             label: venue.name,
-            hint: venue.address ?? undefined,
+            hint: venue.location ?? undefined,
             group: "Venues",
             href: `/venues?search=${encodeURIComponent(venue.name)}`,
           });

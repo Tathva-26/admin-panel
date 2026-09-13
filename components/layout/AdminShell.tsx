@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import CommandPalette from "@/components/common/CommandPalette";
 import Spinner from "@/components/ui/Spinner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import LoginPage from "@/app/login/page";
 import UnauthorizedPage from "@/app/unauthorized/page";
 
@@ -63,8 +64,10 @@ function AdminShellContent({ children }: { children: ReactNode }) {
 
 export default function AdminShell({ children }: { children: ReactNode }) {
   return (
-    <AuthProvider>
-      <AdminShellContent>{children}</AdminShellContent>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AdminShellContent>{children}</AdminShellContent>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
