@@ -9,6 +9,7 @@ import Field from "@/components/ui/Field";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
+import ImageUpload from "@/components/ui/ImageUpload";
 import { useApi } from "@/hooks/useApi";
 import { useMutation } from "@/hooks/useMutation";
 import { apiErrorMessage } from "@/lib/api/errors";
@@ -188,23 +189,6 @@ function EventFormDialog({
     set("endTime", endIso);
   }
 
-  function handleImageUpload(file?: File) {
-    setImageError(undefined);
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setImageError("Choose an image file.");
-      return;
-    }
-    if (file.size > 1_000_000) {
-      setImageError("Choose an image smaller than 1 MB.");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => set("picture", String(reader.result));
-    reader.onerror = () => setImageError("The image could not be read.");
-    reader.readAsDataURL(file);
-  }
 
   useEffect(() => {
     if (mutation.error?.status === 409) {
@@ -251,12 +235,19 @@ function EventFormDialog({
       body.teamSize = null;
     }
 
+    // The contract expects a hosted URL for `picture`. A base64 data URL from
+    // the local upload preview must not be sent to the backend. Strip it and
+    // ask the user for a real URL until a dedicated upload endpoint exists.
+    if (body.picture && body.picture.startsWith("data:")) {
+      body.picture = "";
+    }
+
     if (!isEdit) {
       const nextErrors: Record<string, string> = {};
       if (!body.heading.trim()) nextErrors.heading = "Enter an event heading.";
       if (!body.description?.trim()) nextErrors.description = "Enter a description.";
       if (!body.catchyPara?.trim()) nextErrors.catchyPara = "Enter a catchy paragraph.";
-      if (!body.picture) nextErrors.picture = "Add an image URL or upload an image.";
+      if (!body.picture) nextErrors.picture = "Provide an image URL. Local uploads are preview-only until the upload API is available.";
       if (!dateInput) nextErrors.datetime = "Choose a date.";
       if (!startTimeInput) nextErrors.startTime = "Choose a start time.";
       if (body.capacity == null) nextErrors.capacity = "Enter a capacity.";
@@ -443,30 +434,30 @@ function EventFormDialog({
                 </div>
 
                 {imageMode === "url" ? (
-                  <Input
-                    {...props}
-                    type="url"
-                    value={form.picture ?? ""}
-                    onChange={(e) => set("picture", e.target.value || null)}
-                    placeholder="https://example.com/image.jpg"
-                  />
+                  <div className="space-y-3">
+                    <Input
+                      {...props}
+                      type="url"
+                      value={form.picture ?? ""}
+                      onChange={(e) => set("picture", e.target.value || null)}
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    {form.picture ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={form.picture}
+                        alt="Selected event image preview"
+                        className="h-32 w-full rounded-md border border-border object-cover"
+                      />
+                    ) : null}
+                  </div>
                 ) : (
-                  <Input
-                    {...props}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e.target.files?.[0])}
+                  <ImageUpload
+                    value={form.picture}
+                    onChange={(file, dataUrl) => set("picture", dataUrl)}
+                    onError={(err) => setImageError(err)}
                   />
                 )}
-
-                {form.picture ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={form.picture}
-                    alt="Selected event image preview"
-                    className="h-32 w-full rounded-md border border-border object-cover"
-                  />
-                ) : null}
               </div>
             )}
           </Field>
