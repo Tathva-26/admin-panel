@@ -501,7 +501,6 @@ function EventFormDialog({
             <Field
               label="Price (₹)"
               error={fields.price ?? priceError}
-              hint="Enter in Rupees; stored as paise."
             >
               {(props) => (
                 <Input
@@ -510,7 +509,7 @@ function EventFormDialog({
                   inputMode="decimal"
                   value={priceInput}
                   onChange={(e) => handlePriceChange(e.target.value)}
-                  placeholder="499.00"
+                  placeholder="499"
                 />
               )}
             </Field>

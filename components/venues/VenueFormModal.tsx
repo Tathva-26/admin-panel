@@ -27,7 +27,9 @@ export default function VenueFormModal({
   onSaved,
 }: VenueFormModalProps) {
   const [name, setName] = useState(venue?.name ?? "");
-  const [location, setLocation] = useState(venue?.location ?? "");
+  const [address, setAddress] = useState(venue?.address ?? "");
+  const [latitude, setLatitude] = useState(venue?.latitude?.toString() ?? "");
+  const [longitude, setLongitude] = useState(venue?.longitude?.toString() ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
 
   const save = useMutation(async (body: VenueInput) =>
@@ -43,7 +45,9 @@ export default function VenueFormModal({
 
     const saved = await save.run({
       name: name.trim(),
-      location: location.trim() || null,
+      address: address.trim() || null,
+      latitude: latitude.trim() ? Number(latitude) : null,
+      longitude: longitude.trim() ? Number(longitude) : null,
     });
 
     if (saved) onSaved();
@@ -98,16 +102,43 @@ export default function VenueFormModal({
           )}
         </Field>
 
-        <Field label="Location" error={errorFor("location")}>
+        <Field label="Address" error={errorFor("address")}>
           {(props) => (
             <Input
               {...props}
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
               placeholder="Academic Block, NIT Calicut"
             />
           )}
         </Field>
+
+        <div className="flex gap-3">
+          <Field label="Latitude" error={errorFor("latitude")}>
+            {(props) => (
+              <Input
+                {...props}
+                type="number"
+                step="any"
+                value={latitude}
+                onChange={(e) => setLatitude(e.target.value)}
+                placeholder="11.3216"
+              />
+            )}
+          </Field>
+          <Field label="Longitude" error={errorFor("longitude")}>
+            {(props) => (
+              <Input
+                {...props}
+                type="number"
+                step="any"
+                value={longitude}
+                onChange={(e) => setLongitude(e.target.value)}
+                placeholder="75.9336"
+              />
+            )}
+          </Field>
+        </div>
       </div>
     </Modal>
   );

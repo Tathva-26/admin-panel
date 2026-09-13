@@ -2,35 +2,10 @@ import type { DashboardStats } from "@/types";
 
 import { get } from "./client";
 
-interface BackendDashboard {
-  users: number;
-  events: number;
-  venues: number;
-  bookings: number;
-  announcements: number;
-  contacts: number;
-  roomBookings: number;
-  pendingBookings: number;
-  pendingContacts: number;
-}
-
 export const getDashboard = async (): Promise<DashboardStats> => {
-  const dashboard = await get<BackendDashboard>(
+  return await get<DashboardStats>(
     "/admin/dashboard",
     undefined,
-    "dashboard",
+    "dashboard", // Note: Depending on whether the actual endpoint wraps it in {"dashboard": {}} or not. The mock returned {"dashboard": ...}, but the contract says it returns the object directly. Actually, the contract doesn't explicitly mention wrapper, but client.ts handles "dashboard" key unwrapping if present.
   );
-
-  return {
-    events: { total: dashboard.events, published: 0, drafts: 0 },
-    announcements: { total: dashboard.announcements, published: 0 },
-    users: dashboard.users,
-    bookings: {
-      total: dashboard.bookings,
-      pending: dashboard.pendingBookings,
-      confirmed: 0,
-      failed: 0,
-    },
-    contactMessages: { new: dashboard.pendingContacts },
-  };
 };
