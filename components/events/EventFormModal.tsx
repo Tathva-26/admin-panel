@@ -13,9 +13,10 @@ import { useApi } from '@/hooks/useApi'
 import { useMutation } from '@/hooks/useMutation'
 import { apiErrorMessage } from '@/lib/api/errors'
 import {
-  archiveEvent,
   createEvent,
+  deleteEvent,
   getEvent,
+  unpublishEvent,
   updateEvent,
 } from '@/lib/api/events'
 import { listVenues } from '@/lib/api/venues'
@@ -112,7 +113,7 @@ function EventFormDialog({
     isoToTimeInput(event?.endTime),
   )
 
-  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [lifecycleOpen, setLifecycleOpen] = useState(false)
 
   const venues = useApi<ListResponse<Venue>>('venues:all', listVenues)
 
@@ -120,7 +121,14 @@ function EventFormDialog({
   const update = useMutation((id: number, body: Partial<EventInput>) =>
     updateEvent(id, body),
   )
-  const archive = useMutation((id: number) => archiveEvent(id))
+  /*
+   * Published events unpublish; drafts delete. Two different endpoints, one
+   * button, because only one of them applies to a given event.
+   */
+  const lifecycle = useMutation(async (id: number): Promise<void> => {
+    if (event?.published) await unpublishEvent(id)
+    else await deleteEvent(id)
+  })
 
   const mutation = isEdit ? update : create
 
@@ -243,7 +251,7 @@ function EventFormDialog({
     <>
       <Modal
         open={true}
-        onClose={mutation.loading || archive.loading ? () => {} : onClose}
+        onClose={mutation.loading || lifecycle.loading ? () => {} : onClose}
         title={isEdit ? 'Edit Event' : 'Create Event'}
         description={
           isEdit
@@ -253,23 +261,18 @@ function EventFormDialog({
         footer={
           <div className='flex w-full items-center justify-between'>
             <div>
-              {/*
-                Named "Archive", but DELETE /admin/events/:id only sets
-                published:false — the same thing unpublish does. Say what it
-                does, and only offer it when there is something to unpublish.
-              */}
-              {isEdit && event?.published ? (
+              {isEdit && event ? (
                 <Button
                   size='sm'
                   variant='ghost'
                   className='text-destructive hover:bg-destructive/10 hover:text-destructive'
-                  disabled={mutation.loading || archive.loading}
+                  disabled={mutation.loading || lifecycle.loading}
                   onClick={() => {
-                    archive.reset()
-                    setArchiveOpen(true)
+                    lifecycle.reset()
+                    setLifecycleOpen(true)
                   }}
                 >
-                  Unpublish
+                  {event.published ? 'Unpublish' : 'Delete'}
                 </Button>
               ) : null}
             </div>
@@ -277,7 +280,7 @@ function EventFormDialog({
               <Button
                 size='sm'
                 onClick={onClose}
-                disabled={mutation.loading || archive.loading}
+                disabled={mutation.loading || lifecycle.loading}
               >
                 Cancel
               </Button>
@@ -285,7 +288,7 @@ function EventFormDialog({
                 size='sm'
                 variant='primary'
                 loading={mutation.loading}
-                disabled={archive.loading}
+                disabled={lifecycle.loading}
                 onClick={handleSubmit}
               >
                 {isEdit ? 'Save Changes' : 'Create Event'}
@@ -540,24 +543,28 @@ function EventFormDialog({
 
       {isEdit && event ? (
         <ConfirmDialog
-          open={archiveOpen}
-          title='Unpublish event'
-          description={`Unpublish "${event.heading}"? It stays in the admin list as a draft and comes off the public site.`}
-          confirmLabel='Unpublish'
+          open={lifecycleOpen}
+          title={event.published ? 'Unpublish event' : 'Delete event'}
+          description={
+            event.published
+              ? `Unpublish "${event.heading}"? It stays in the admin list as a draft and comes off the public site.`
+              : `Delete "${event.heading}"? This cannot be undone.`
+          }
+          confirmLabel={event.published ? 'Unpublish' : 'Delete'}
           destructive
-          loading={archive.loading}
-          error={archive.error}
+          loading={lifecycle.loading}
+          error={lifecycle.error}
           onConfirm={async () => {
-            const result = await archive.run(event.id)
+            const result = await lifecycle.run(event.id)
             if (result !== null) {
-              setArchiveOpen(false)
+              setLifecycleOpen(false)
               onSaved()
               onClose()
             }
           }}
           onCancel={() => {
-            archive.reset()
-            setArchiveOpen(false)
+            lifecycle.reset()
+            setLifecycleOpen(false)
           }}
         />
       ) : null}

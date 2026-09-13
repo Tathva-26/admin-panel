@@ -7,7 +7,7 @@ import RowActionsMenu, {
   type RowAction,
 } from "@/components/common/RowActionsMenu";
 import { useMutation } from "@/hooks/useMutation";
-import { publishEvent, unpublishEvent } from "@/lib/api/events";
+import { deleteEvent, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import type { AdminEvent } from "@/types";
 
@@ -25,11 +25,13 @@ export default function EventRowActions({
   onError,
 }: EventRowActionsProps) {
   const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
   const unpublish = useMutation((id: number) => unpublishEvent(id));
+  const remove = useMutation((id: number) => deleteEvent(id));
 
-  const busy = publishing || unpublish.loading;
+  const busy = publishing || unpublish.loading || remove.loading;
 
   // Publishing is additive and easy to undo, so it goes through without a
   // prompt. Unpublishing pulls the event off the public site, so it asks.
@@ -53,6 +55,14 @@ export default function EventRowActions({
     }
   }, [event.id, unpublish, onMutated]);
 
+  const confirmDelete = useCallback(async () => {
+    const result = await remove.run(event.id);
+    if (result !== null) {
+      setDeleteOpen(false);
+      onMutated();
+    }
+  }, [event.id, remove, onMutated]);
+
   const actions: RowAction[] = [
     { label: "Edit", onClick: () => onEdit(event) },
     {
@@ -72,16 +82,14 @@ export default function EventRowActions({
     },
     {
       label: "Delete",
-      onClick: () => {},
-      /*
-       * There is no hard delete for events. DELETE /admin/events/:id only sets
-       * published:false — the same thing Unpublish does — so a "Delete" that
-       * appeared to work while leaving the row in place would be a lie. Kept
-       * visible but disabled so the gap is legible rather than mysterious.
-       */
-      disabled: true,
-      disabledReason:
-        "Not supported yet — the backend can only unpublish events, not delete them.",
+      onClick: () => {
+        remove.reset();
+        setDeleteOpen(true);
+      },
+      // Permanent, so it stays behind the draft state, matching announcements.
+      // An event with bookings is refused by the backend even as a draft.
+      disabled: event.published,
+      disabledReason: "Unpublish it first — published events can't be deleted.",
       destructive: true,
     },
   ];
@@ -102,6 +110,21 @@ export default function EventRowActions({
         onCancel={() => {
           unpublish.reset();
           setUnpublishOpen(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete event"
+        description={`Delete "${event.heading}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={remove.loading}
+        error={remove.error}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          remove.reset();
+          setDeleteOpen(false);
         }}
       />
     </>

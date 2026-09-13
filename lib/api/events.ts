@@ -27,5 +27,8 @@ export const publishEvent = (id: number) =>
 export const unpublishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
 
-/** Archive, not a guaranteed physical delete — refetch rather than assume. */
-export const archiveEvent = (id: number) => del(`${BASE}/${id}`);
+/**
+ * Permanent. Rejected with `409 EVENT_PUBLISHED` while the event is still
+ * published, and `409 EVENT_HAS_BOOKINGS` if anyone has booked it.
+ */
+export const deleteEvent = (id: number) => del(`${BASE}/${id}`);
