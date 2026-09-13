@@ -22,8 +22,11 @@ import axios from "axios";
  * backend". That was survivable while an in-repo mock answered those paths;
  * it no longer exists.
  */
-export const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+export const API_ORIGIN = (
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+)
+  .replace(/^["']|["']$/g, "")
+  .trim();
 
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
@@ -78,15 +81,19 @@ export type QueryParams = Record<
 function cleanParams(params?: QueryParams): QueryParams | undefined {
   if (!params) return undefined;
 
-  const cleaned = Object.entries(params)
-    .filter(
-      ([, value]) => value !== undefined && value !== null && value !== "",
-    )
-    .map(
-      ([key, value]) => [key === "pageSize" ? "limit" : key, value] as const,
-    );
+  const cleaned: [string, string | number | boolean | null][] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "") {
+      if (key === "pageSize") {
+        cleaned.push(["limit", value]);
+        cleaned.push(["pageSize", value]);
+      } else {
+        cleaned.push([key, value]);
+      }
+    }
+  }
 
-  return cleaned.length ? Object.fromEntries(cleaned) : undefined;
+  return cleaned.length ? (Object.fromEntries(cleaned) as QueryParams) : undefined;
 }
 
 /**
@@ -173,7 +180,7 @@ function normalizeList<T>(data: T): T {
       : items;
   const pagination = value.pagination as Record<string, unknown> | undefined;
   const page = Number(pagination?.page ?? 1);
-  const pageSize = Number(pagination?.limit ?? items.length);
+  const pageSize = Number(pagination?.pageSize ?? pagination?.limit ?? items.length);
   const total = Number(pagination?.total ?? items.length);
 
   return {
@@ -198,7 +205,7 @@ export async function post<T>(
   body?: unknown,
   key?: string,
 ): Promise<T> {
-  const res = await api.post(path, body ?? {});
+  const res = await api.post(path, body);
   return unwrap<T>(res.data, key);
 }
 

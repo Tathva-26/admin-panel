@@ -27,7 +27,9 @@ export default function VenueFormModal({
   onSaved,
 }: VenueFormModalProps) {
   const [name, setName] = useState(venue?.name ?? "");
-  const [address, setAddress] = useState(venue?.address ?? "");
+  const [address, setAddress] = useState(
+    venue?.address ?? venue?.location ?? "",
+  );
   const [latitude, setLatitude] = useState(venue?.latitude?.toString() ?? "");
   const [longitude, setLongitude] = useState(venue?.longitude?.toString() ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
@@ -43,9 +45,11 @@ export default function VenueFormModal({
     }
     setNameError(null);
 
+    const addr = address.trim() || null;
     const saved = await save.run({
       name: name.trim(),
-      address: address.trim() || null,
+      address: addr,
+      location: addr,
       latitude: latitude.trim() ? Number(latitude) : null,
       longitude: longitude.trim() ? Number(longitude) : null,
     });

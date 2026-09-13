@@ -39,8 +39,39 @@ export default function ImageUpload({
 
     const reader = new FileReader();
     reader.onload = () => {
-      onError?.(undefined);
-      onChange(file, String(reader.result));
+      const dataUrl = String(reader.result);
+      const img = new Image();
+      img.onload = () => {
+        const MAX_DIM = 800;
+        let { width, height } = img;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL("image/jpeg", 0.8);
+          onError?.(undefined);
+          onChange(file, compressed);
+        } else {
+          onError?.(undefined);
+          onChange(file, dataUrl);
+        }
+      };
+      img.onerror = () => {
+        onError?.(undefined);
+        onChange(file, dataUrl);
+      };
+      img.src = dataUrl;
     };
     reader.onerror = () => {
       onError?.("The image could not be read.");

@@ -143,7 +143,7 @@ const columns: Column<Announcement>[] = [
           // We apply the max-width constraints directly to the button now.
           className="group inline-flex max-w-[200px] sm:max-w-[300px] md:max-w-[400px] lg:max-w-[600px] text-left outline-none rounded-sm ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
-          <span className="truncate font-medium text-foreground transition-colors group-hover:text-white">
+          <span className="truncate font-medium text-foreground transition-colors">
             {a.title}
           </span>
         </button>

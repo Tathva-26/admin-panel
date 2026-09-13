@@ -75,6 +75,8 @@ export interface EventVenue {
   id: number;
   name: string;
   address: string | null;
+  location?: string | null;
+  locId?: number | null;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -141,6 +143,8 @@ export interface Venue {
   id: number;
   name: string;
   address: string | null;
+  location?: string | null;
+  locId?: number | null;
   latitude: number | null;
   longitude: number | null;
 }
@@ -148,6 +152,8 @@ export interface Venue {
 export interface VenueInput {
   name: string;
   address?: string | null;
+  location?: string | null;
+  locId?: number | null;
   latitude?: number | null;
   longitude?: number | null;
 }

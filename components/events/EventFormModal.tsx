@@ -235,27 +235,17 @@ function EventFormDialog({
       body.teamSize = null;
     }
 
-    // The contract expects a hosted URL for `picture`. A base64 data URL from
-    // the local upload preview must not be sent to the backend. Strip it and
-    // ask the user for a real URL until a dedicated upload endpoint exists.
-    if (body.picture && body.picture.startsWith("data:")) {
-      body.picture = "";
-    }
-
     if (!isEdit) {
       const nextErrors: Record<string, string> = {};
       if (!body.heading.trim()) nextErrors.heading = "Enter an event heading.";
-      if (!body.description?.trim()) nextErrors.description = "Enter a description.";
-      if (!body.catchyPara?.trim()) nextErrors.catchyPara = "Enter a catchy paragraph.";
-      if (!body.picture) nextErrors.picture = "Provide an image URL. Local uploads are preview-only until the upload API is available.";
-      if (!dateInput) nextErrors.datetime = "Choose a date.";
-      if (!startTimeInput) nextErrors.startTime = "Choose a start time.";
-      if (body.capacity == null) nextErrors.capacity = "Enter a capacity.";
-      if (body.venueId == null) nextErrors.venueId = "Choose a venue.";
-      if (!body.committee?.trim()) nextErrors.committee = "Enter a committee.";
-      if (body.ticketId == null) nextErrors.ticketId = "Enter a ticket ID.";
       if (body.isTeamEvent && body.teamSize == null) {
         nextErrors.teamSize = "Enter a team size.";
+      }
+
+      if (body.published) {
+        if (!body.description?.trim()) nextErrors.description = "Enter a description before publishing.";
+        if (!dateInput) nextErrors.datetime = "Choose a date before publishing.";
+        if (body.capacity == null) nextErrors.capacity = "Enter a capacity before publishing.";
       }
 
       setClientErrors(nextErrors);
@@ -382,7 +372,7 @@ function EventFormDialog({
             </Field>
           </div>
 
-            <Field label="Description" error={fields.description} required>
+            <Field label="Description" error={fields.description}>
             {(props) => (
               <Textarea
                 {...props}
@@ -394,7 +384,7 @@ function EventFormDialog({
             )}
           </Field>
 
-            <Field label="Catchy Paragraph" error={fields.catchyPara} required>
+            <Field label="Catchy Paragraph" error={fields.catchyPara}>
             {(props) => (
               <Input
                 {...props}
@@ -405,7 +395,7 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label="Event Image" error={fields.picture ?? imageError} required>
+          <Field label="Event Image" error={fields.picture ?? imageError}>
             {(props) => (
               <div className="space-y-3">
                 <div className="flex gap-2">
@@ -463,7 +453,7 @@ function EventFormDialog({
           </Field>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Field label="Date" error={fields.datetime} required>
+            <Field label="Date" error={fields.datetime}>
               {(props) => (
                 <Input
                   {...props}
@@ -474,7 +464,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Start Time" error={fields.startTime} required>
+            <Field label="Start Time" error={fields.startTime}>
               {(props) => (
                 <Input
                   {...props}
@@ -514,7 +504,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Capacity" error={fields.capacity} required>
+            <Field label="Capacity" error={fields.capacity}>
               {(props) => (
                 <Input
                   {...props}
@@ -532,7 +522,7 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label="Venue" error={fields.venueId} required>
+            <Field label="Venue" error={fields.venueId}>
               {(props) => (
                 <Select
                   {...props}
@@ -555,7 +545,7 @@ function EventFormDialog({
             </Field>
           </div>
 
-          <Field label="Committee" error={fields.committee} required>
+          <Field label="Committee" error={fields.committee}>
             {(props) => (
               <Input
                 {...props}
@@ -608,7 +598,7 @@ function EventFormDialog({
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Ticket ID" error={fields.ticketId} required>
+            <Field label="Ticket ID" error={fields.ticketId}>
               {(props) => (
                 <Input
                   {...props}
