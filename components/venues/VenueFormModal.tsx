@@ -146,6 +146,7 @@ export default function VenueFormModal({
                 // Otherwise "Required" sits there accusingly while they type.
                 if (nameError) setNameError(null);
               }}
+              maxLength={255}
               placeholder="Main Hall"
             />
           )}
@@ -157,6 +158,7 @@ export default function VenueFormModal({
               {...props}
               value={address}
               onChange={(e) => setAddress(e.target.value)}
+              maxLength={500}
               placeholder="Academic Block, NIT Calicut"
             />
           )}

@@ -167,11 +167,9 @@ export default function UsersList() {
       className: "w-32",
       isActions: true,
       cell: (user) => {
-        /*
-         * Demoting yourself takes away your own access with no way back — only
-         * another admin could undo it. The backend has no such guard (it only
-         * refuses to remove the *last* admin), so the panel holds the line.
-         */
+        // Demoting yourself takes away your own access with no way back. The
+        // backend refuses it too (403 SELF_ROLE_CHANGE); this keeps the control
+        // from being offered in the first place.
         const isSelf = currentUser?.id === user.id;
 
         return (

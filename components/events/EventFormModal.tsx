@@ -330,6 +330,7 @@ function EventFormDialog({
                   {...props}
                   value={form.heading}
                   onChange={(e) => set('heading', e.target.value)}
+                  maxLength={300}
                   placeholder='Robotics Workshop'
                 />
               )}
@@ -360,6 +361,7 @@ function EventFormDialog({
                 {...props}
                 value={form.description ?? ''}
                 onChange={(e) => set('description', e.target.value)}
+                maxLength={5000}
                 placeholder='Describe the event…'
                 rows={3}
               />
@@ -372,6 +374,7 @@ function EventFormDialog({
                 {...props}
                 value={form.catchyPara ?? ''}
                 onChange={(e) => set('catchyPara', e.target.value)}
+                maxLength={1000}
                 placeholder='Build something useful'
               />
             )}
@@ -393,6 +396,7 @@ function EventFormDialog({
                 inputMode='url'
                 value={form.picture ?? ''}
                 onChange={(e) => set('picture', e.target.value)}
+                maxLength={1000}
                 placeholder='https://images.tiqr.events/…'
               />
             )}
@@ -474,7 +478,7 @@ function EventFormDialog({
                 <Input
                   {...props}
                   type='number'
-                  min={0}
+                  min={1}
                   value={form.capacity ?? ''}
                   onChange={(e) =>
                     set(
@@ -516,6 +520,7 @@ function EventFormDialog({
                 {...props}
                 value={form.committee ?? ''}
                 onChange={(e) => set('committee', e.target.value)}
+                maxLength={120}
                 placeholder='Robotics Committee'
               />
             )}
