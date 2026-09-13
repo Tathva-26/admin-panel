@@ -341,8 +341,7 @@ export type BookingQuery = ListQuery & {
   status?: BookingStatus;
   kind?: BookingKind;
   eventId?: number;
-  /** Accepted by the backend's adminBookingQuerySchema; used to resolve a
-   *  name search into bookings, since `search` itself ignores user names. */
+  /** Narrows to one user's bookings; used when linking in from a user. */
   userId?: number;
 };
 

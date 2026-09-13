@@ -12,7 +12,7 @@ import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { useNow } from "@/hooks/useNow";
-import { searchBookings } from "@/lib/api/bookings";
+import { listBookings } from "@/lib/api/bookings";
 import {
   effectiveBookingStatus,
   formatDate,
@@ -97,9 +97,7 @@ const toExportRow = (booking: Booking): CsvCell[] => [
 
 export default function BookingsList() {
   const bookings = useList<Booking>(({ page, pageSize, filters }) =>
-    // searchBookings, not listBookings: the backend's `search` ignores user
-    // names, so a name is resolved via /admin/users and merged in here.
-    searchBookings({
+    listBookings({
       page,
       pageSize,
       search: asText(filters.search),
@@ -125,10 +123,8 @@ export default function BookingsList() {
   };
 
   const csv = useCsvExport({
-    // Same helper as the table, so an export of a name search contains the rows
-    // the name search actually shows.
     fetchPage: (page, pageSize) =>
-      searchBookings({ ...activeQuery, page, pageSize }),
+      listBookings({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "bookings",
