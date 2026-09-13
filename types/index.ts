@@ -1,10 +1,9 @@
 /**
  * Shared types for the Tathva admin API.
  *
- * These mirror `admin-panel-frontend-api.md`. Where the doc says a response
- * includes a field "at least", that field is required here; fields that only
- * appear in request bodies are marked optional, because the backend is still
- * being written and we should not assert what it returns.
+ * These mirror the backend's `/api/admin/*` routes. Fields a response always
+ * includes are required here; fields that only appear in request bodies are
+ * optional.
  *
  * Conventions from the contract:
  *   - all dates are ISO 8601 strings, sent and received
@@ -70,12 +69,17 @@ export const EVENT_TYPES = [
 
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Venue as embedded in an event response. */
+/**
+ * Venue as embedded in an event response.
+ *
+ * The backend's `adminEventShape` returns `{ id, name, address }`. This used to
+ * declare `location`/`locId`, which the API has never sent — so every read of
+ * `venue.location` was silently `undefined`.
+ */
 export interface EventVenue {
   id: number;
   name: string;
-  location: string | null;
-  locId?: number | null;
+  address: string | null;
 }
 
 export interface AdminEvent {
@@ -136,17 +140,30 @@ export type EventQuery = ListQuery & {
 /* Venues                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Mirrors the backend's `venueShape`: `{ id, name, address, latitude, longitude }`.
+ * `location`/`locId` were frontend inventions and are gone.
+ */
 export interface Venue {
   id: number;
   name: string;
-  location: string | null;
-  locId: number | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
+/**
+ * Body for `POST /admin/venues` and `PATCH /admin/venues/:id`.
+ *
+ * Must match `venueInputSchema` on the backend — it is a non-strict Zod object,
+ * so any key it does not declare is silently stripped rather than rejected.
+ * That is how the old `location` field disappeared without an error.
+ */
 export interface VenueInput {
   name: string;
-  location?: string | null;
-  locId?: number | null;
+  address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -176,9 +193,13 @@ export type AnnouncementQuery = ListQuery & {
 /* Users                                                               */
 /* ------------------------------------------------------------------ */
 
+/** The roles the backend accepts; `roleInputSchema` rejects anything else. */
 export const ROLES = ["USER", "ADMIN"] as const;
 
 export type Role = (typeof ROLES)[number];
+
+export const canAccessPanel = (role: string | null | undefined): boolean =>
+  role === "ADMIN";
 
 /**
  * Note: `googleSub` is deliberately absent. The contract says not to expect or
@@ -219,6 +240,27 @@ export const BOOKING_STATUSES = [
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+/**
+ * Transitions the backend will accept, mirroring the `allowed` map in
+ * `adminController.updateBookingStatus`. Anything outside it is rejected with
+ * `409 INVALID_BOOKING_TRANSITION`.
+ *
+ * Keyed by the booking's *stored* status. That matters: the backend checks the
+ * database column, so a booking displayed as TIMEOUT but stored as PENDING is
+ * still governed by PENDING's row here.
+ *
+ * TIMEOUT is deliberately absent as a destination. The rest of the system treats
+ * it as computed from `createdAt` and never persists it, so writing it by hand
+ * would create a state nothing else produces.
+ */
+export const BOOKING_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED", "FAILED"],
+  CONFIRMED: ["CANCELLED"],
+  FAILED: ["PENDING"],
+  CANCELLED: ["PENDING"],
+  TIMEOUT: ["PENDING"],
+};
 
 export const BOOKING_KINDS = ["EVENT", "ACCOMMODATION"] as const;
 
@@ -299,10 +341,48 @@ export type BookingQuery = ListQuery & {
   status?: BookingStatus;
   kind?: BookingKind;
   eventId?: number;
+  /** Accepted by the backend's adminBookingQuerySchema; used to resolve a
+   *  name search into bookings, since `search` itself ignores user names. */
+  userId?: number;
 };
 
 export interface BookingStatusInput {
   status: BookingStatus;
+}
+
+/* ------------------------------------------------------------------ */
+/* Contact messages                                                    */
+/* ------------------------------------------------------------------ */
+
+export const CONTACT_STATUSES = [
+  "NEW",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "SPAM",
+] as const;
+
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
+
+export interface ContactMessage {
+  id: number;
+  topic: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  query: string;
+  status: ContactStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ContactQuery = ListQuery & {
+  status?: ContactStatus;
+  topic?: string;
+  email?: string;
+};
+
+export interface ContactStatusInput {
+  status: ContactStatus;
 }
 
 /* ------------------------------------------------------------------ */

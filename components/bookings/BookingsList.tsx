@@ -10,9 +10,16 @@ import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
-import { listBookings } from "@/lib/api/bookings";
 import { useList } from "@/hooks/useList";
-import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { useNow } from "@/hooks/useNow";
+import { searchBookings } from "@/lib/api/bookings";
+import {
+  effectiveBookingStatus,
+  formatDate,
+  formatDateTime,
+  formatInr,
+  paiseToRupeeInput,
+} from "@/lib/format";
 import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 import { asEnum, asNumber, asText } from "@/lib/params";
 import {
@@ -58,7 +65,8 @@ const EXPORT_HEADERS = [
 
 const toExportRow = (booking: Booking): CsvCell[] => [
   booking.bookingUid,
-  booking.status,
+  // Expiry-aware, matching the badge in the table rather than the raw column.
+  effectiveBookingStatus(booking),
   booking.kind,
   booking.user?.name ?? "",
   booking.user?.email ?? "",
@@ -89,7 +97,9 @@ const toExportRow = (booking: Booking): CsvCell[] => [
 
 export default function BookingsList() {
   const bookings = useList<Booking>(({ page, pageSize, filters }) =>
-    listBookings({
+    // searchBookings, not listBookings: the backend's `search` ignores user
+    // names, so a name is resolved via /admin/users and merged in here.
+    searchBookings({
       page,
       pageSize,
       search: asText(filters.search),
@@ -115,21 +125,29 @@ export default function BookingsList() {
   };
 
   const csv = useCsvExport({
+    // Same helper as the table, so an export of a name search contains the rows
+    // the name search actually shows.
     fetchPage: (page, pageSize) =>
-      listBookings({ ...activeQuery, page, pageSize }),
+      searchBookings({ ...activeQuery, page, pageSize }),
     headers: EXPORT_HEADERS,
     toRow: toExportRow,
     filename: "bookings",
   });
 
+  // PENDING becomes TIMEOUT with time rather than with any server response, so
+  // a once-a-minute tick keeps the badges honest without a refresh.
+  const now = useNow();
+
   const statusSplit: Segment[] = useMemo(
     () =>
       BOOKING_STATUSES.map((status) => ({
         label: bookingStatusLabel(status),
-        value: bookings.items.filter((b) => b.status === status).length,
+        value: bookings.items.filter(
+          (b) => effectiveBookingStatus(b, now) === status,
+        ).length,
         tone: STATUS_TONES[status],
       })),
-    [bookings.items],
+    [bookings.items, now],
   );
 
   /**
@@ -216,7 +234,10 @@ export default function BookingsList() {
       key: "status",
       header: "Status",
       className: "w-28",
-      cell: (booking) => <BookingStatusBadge status={booking.status} />,
+      // The expiry-aware status, so this agrees with what the customer is told.
+      cell: (booking) => (
+        <BookingStatusBadge status={effectiveBookingStatus(booking, now)} />
+      ),
     },
     {
       key: "createdAt",
@@ -247,7 +268,7 @@ export default function BookingsList() {
         <SearchInput
           value={bookings.filters.search ?? ""}
           onChange={(value) => bookings.setFilter("search", value)}
-          placeholder="Search booking or user…"
+          placeholder="Search booking ID, name or email…"
         />
 
         <div className="flex gap-2">

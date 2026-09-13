@@ -8,12 +8,21 @@ import Field from "@/components/ui/Field";
 import { Select } from "@/components/ui/Input";
 import Modal from "@/components/ui/Modal";
 import { useMutation } from "@/hooks/useMutation";
+import { useNow } from "@/hooks/useNow";
 import { updateBookingStatus } from "@/lib/api/bookings";
-import { formatDateTime, formatInr } from "@/lib/format";
+import {
+  effectiveBookingStatus,
+  formatDateTime,
+  formatInr,
+} from "@/lib/format";
 import { bookingKindLabel, bookingStatusLabel } from "@/lib/labels";
 
 import AccommodationPanel from "./AccommodationPanel";
-import { BOOKING_STATUSES, type Booking, type BookingStatus } from "@/types";
+import {
+  BOOKING_TRANSITIONS,
+  type Booking,
+  type BookingStatus,
+} from "@/types";
 
 /**
  * Mounted only while a booking is selected, and keyed by uid in the parent, so
@@ -37,12 +46,19 @@ export default function BookingStatusModal({
   onClose,
   onSaved,
 }: BookingStatusModalProps) {
-  const [status, setStatus] = useState<BookingStatus>(booking.status);
+  // `displayStatus` is what the customer sees (PENDING becomes TIMEOUT once the
+  // window lapses); `booking.status` is the stored column the backend validates
+  // transitions against. Badge shows the former, options come from the latter.
+  const displayStatus = effectiveBookingStatus(booking, useNow());
+  const allowed = BOOKING_TRANSITIONS[booking.status] ?? [];
+
+  const [status, setStatus] = useState<BookingStatus | "">("");
   const update = useMutation((uid: string, next: BookingStatus) =>
     updateBookingStatus(uid, { status: next }),
   );
 
   async function submit() {
+    if (!status) return;
     const updated = await update.run(booking.bookingUid, status);
     if (updated) onSaved();
   }
@@ -62,7 +78,7 @@ export default function BookingStatusModal({
             size="sm"
             variant="primary"
             loading={update.loading}
-            disabled={booking.status === status}
+            disabled={!status}
             onClick={submit}
           >
             Update status
@@ -108,8 +124,20 @@ export default function BookingStatusModal({
 
             <dt className="text-muted-foreground">Current</dt>
             <dd className="text-right">
-              <BookingStatusBadge status={booking.status} />
+              <BookingStatusBadge status={displayStatus} />
             </dd>
+
+            {/* Worth saying out loud when the two disagree, so nobody reads the
+                badge as a database value and wonders why it is not in the list. */}
+            {displayStatus !== booking.status ? (
+              <>
+                <dt className="text-muted-foreground">Stored as</dt>
+                <dd className="text-right text-foreground">
+                  {bookingStatusLabel(booking.status)} — the payment window
+                  lapsed
+                </dd>
+              </>
+            ) : null}
           </dl>
 
           {booking.accommodation ? (
@@ -121,30 +149,44 @@ export default function BookingStatusModal({
               href={booking.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-xs text-blue-600 underline-offset-2 hover:underline"
+              className="block text-xs text-info underline-offset-2 hover:underline"
             >
               Open ticket
             </a>
           ) : null}
 
-          <Field
-            label="New status"
-            hint="The backend verifies payment state and may reject the change."
-          >
-            {(props) => (
-              <Select
-                {...props}
-                value={status}
-                onChange={(e) => setStatus(e.target.value as BookingStatus)}
-              >
-                {BOOKING_STATUSES.map((option) => (
-                  <option key={option} value={option}>
-                    {bookingStatusLabel(option)}
-                  </option>
-                ))}
-              </Select>
-            )}
-          </Field>
+          {/*
+            Only the transitions the backend will actually accept. Offering the
+            full list meant picking a dead end and learning about it from a 409.
+          */}
+          {allowed.length > 0 ? (
+            <Field
+              label="Change status to"
+              hint="Only transitions the backend allows from the stored status are listed."
+            >
+              {(props) => (
+                <Select
+                  {...props}
+                  value={status}
+                  onChange={(e) =>
+                    setStatus(e.target.value as BookingStatus | "")
+                  }
+                >
+                  <option value="">Leave unchanged</option>
+                  {allowed.map((option) => (
+                    <option key={option} value={option}>
+                      {bookingStatusLabel(option)}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+          ) : (
+            <p className="rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+              There are no status changes available from{" "}
+              {bookingStatusLabel(booking.status)}.
+            </p>
+          )}
         </div>
       ) : null}
     </Modal>

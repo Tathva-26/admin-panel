@@ -1,6 +1,10 @@
 import Badge, { type BadgeTone } from "@/components/ui/Badge";
-import { bookingStatusLabel, roleLabel } from "@/lib/labels";
-import type { BookingStatus, Role } from "@/types";
+import {
+  bookingStatusLabel,
+  contactStatusLabel,
+  roleLabel,
+} from "@/lib/labels";
+import type { BookingStatus, ContactStatus, Role } from "@/types";
 
 /**
  * Colour is decided once, here, so the same state does not end up green on one
@@ -22,6 +26,21 @@ export function BookingStatusBadge({ status }: { status: BookingStatus }) {
   );
 }
 
+const CONTACT_TONES: Record<ContactStatus, BadgeTone> = {
+  NEW: "blue",
+  IN_PROGRESS: "amber",
+  RESOLVED: "green",
+  SPAM: "neutral",
+};
+
+export function ContactStatusBadge({ status }: { status: ContactStatus }) {
+  return (
+    <Badge tone={CONTACT_TONES[status] ?? "neutral"}>
+      {contactStatusLabel(status)}
+    </Badge>
+  );
+}
+
 export function PublishedBadge({ published }: { published: boolean }) {
   return (
     <Badge tone={published ? "green" : "neutral"}>
@@ -31,7 +50,8 @@ export function PublishedBadge({ published }: { published: boolean }) {
 }
 
 export function RoleBadge({ role }: { role: Role }) {
-  return (
-    <Badge tone={role === "ADMIN" ? "blue" : "neutral"}>{roleLabel(role)}</Badge>
-  );
+  // Both admin tiers read as "blue"; the label carries the distinction rather
+  // than a new tone, which would mean a new colour token for one badge.
+  const tone = role === "USER" ? "neutral" : "blue";
+  return <Badge tone={tone}>{roleLabel(role)}</Badge>;
 }

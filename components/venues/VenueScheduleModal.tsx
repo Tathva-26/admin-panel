@@ -37,7 +37,7 @@ export default function VenueScheduleModal({
       open
       onClose={onClose}
       title={`Schedule — ${venue.name}`}
-      description={venue.location ?? undefined}
+      description={venue.address ?? undefined}
       footer={
         <Button size="sm" onClick={onClose}>
           Close

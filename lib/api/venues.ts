@@ -5,12 +5,35 @@ import { del, get, patch, post } from "./client";
 const BASE = "/admin/venues";
 
 /**
- * The contract documents `GET /admin/venues` without query params, but every
- * list endpoint shares the paged envelope — so this accepts the standard query
- * and simply sends nothing when it is empty.
+ * `GET /admin/venues` accepts no query params — it returns every venue behind a
+ * fake paged envelope. `search`, `page` and `pageSize` are therefore applied
+ * here. Once the backend supports them, delete this and pass the query through.
  */
-export const listVenues = (query: ListQuery = {}) =>
-  get<ListResponse<Venue>>(BASE, query);
+export const listVenues = async (
+  query: ListQuery = {},
+): Promise<ListResponse<Venue>> => {
+  const all = await get<ListResponse<Venue>>(BASE);
+
+  const search = query.search?.trim().toLowerCase();
+  const filtered = search
+    ? all.items.filter(
+        (venue) =>
+          venue.name.toLowerCase().includes(search) ||
+          (venue.address?.toLowerCase().includes(search) ?? false),
+      )
+    : all.items;
+
+  const page = query.page ?? 1;
+  const pageSize = query.pageSize ?? filtered.length;
+  const start = (page - 1) * pageSize;
+
+  return {
+    items: filtered.slice(start, start + pageSize),
+    page,
+    pageSize,
+    total: filtered.length,
+  };
+};
 
 export const createVenue = (body: VenueInput) =>
   post<Venue>(BASE, body, "venue");

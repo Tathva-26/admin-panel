@@ -13,17 +13,32 @@ import axios from "axios";
  * Origin of the backend, without the `/api` prefix — e.g. `http://localhost:5000`.
  * The contract roots every path at `/api`, so that is appended here rather than
  * repeated in every call.
+ *
+ * `NEXT_PUBLIC_*` is inlined at build time, so it must be set wherever
+ * `next build` runs. Development falls back to the local backend; production
+ * has no sensible default, so a missing value fails the build rather than
+ * shipping a bundle that calls localhost.
  */
-/*
- * Falls back to the local backend rather than "". An empty origin makes every
- * request relative, so with NEXT_PUBLIC_API_URL unset they hit this app's own
- * origin — which serves no /api routes, so the failure arrives as Next's HTML
- * 404 page parsed as an API error instead of a plain "cannot reach the
- * backend". That was survivable while an in-repo mock answered those paths;
- * it no longer exists.
- */
-export const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const configuredOrigin = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+if (!configuredOrigin && process.env.NODE_ENV === "production") {
+  throw new Error(
+    "NEXT_PUBLIC_API_URL is not set. It is inlined at build time, so it must be " +
+      "present when `next build` runs. Copy .env.example to .env.local (or set it " +
+      "in your deploy environment) and point it at the backend origin, without /api.",
+  );
+}
+
+// Avoids "http://host//api". A loop rather than /\/+$/, which backtracks.
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end--;
+  return value.slice(0, end);
+}
+
+export const API_ORIGIN = stripTrailingSlashes(
+  configuredOrigin || "http://localhost:5000",
+);
 
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
@@ -74,17 +89,17 @@ export type QueryParams = Record<
  * Drops empty params so we send `?page=1` rather than `?page=1&type=&search=`.
  * An empty filter should be absent, not blank — the backend treats them
  * differently.
+ *
+ * Param names are sent through unchanged: every admin query schema on the
+ * backend reads `pageSize`, and renaming it to `limit` made it fall back to
+ * the default of 20.
  */
 function cleanParams(params?: QueryParams): QueryParams | undefined {
   if (!params) return undefined;
 
-  const cleaned = Object.entries(params)
-    .filter(
-      ([, value]) => value !== undefined && value !== null && value !== "",
-    )
-    .map(
-      ([key, value]) => [key === "pageSize" ? "limit" : key, value] as const,
-    );
+  const cleaned = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== "",
+  );
 
   return cleaned.length ? Object.fromEntries(cleaned) : undefined;
 }
@@ -173,7 +188,7 @@ function normalizeList<T>(data: T): T {
       : items;
   const pagination = value.pagination as Record<string, unknown> | undefined;
   const page = Number(pagination?.page ?? 1);
-  const pageSize = Number(pagination?.limit ?? items.length);
+  const pageSize = Number(pagination?.pageSize ?? pagination?.limit ?? items.length);
   const total = Number(pagination?.total ?? items.length);
 
   return {
