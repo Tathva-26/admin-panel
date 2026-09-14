@@ -14,7 +14,7 @@ import {
 import { getMe, logout as apiLogout } from "@/lib/api/auth";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 
-import type { AdminUser } from "@/types";
+import { canAccessPanel, type AdminUser } from "@/types";
 
 interface AuthContextType {
   user: AdminUser | null;
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const data = await getMe();
-      if (data && data.role === "ADMIN") {
+      if (data && canAccessPanel(data.role)) {
         setUser(data);
         setIsUnauthorized(false);
       } else {
@@ -86,6 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [verifySession]);
 
   const logout = useCallback(() => {
+    // Clear the token too: state alone leaves the JWT in localStorage, so the
+    // next refresh signs you straight back in.
+    apiLogout();
     setUser(null);
     setIsUnauthorized(false);
   }, []);

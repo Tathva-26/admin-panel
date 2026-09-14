@@ -7,13 +7,23 @@ import Spinner from "./Spinner";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 type Size = "sm" | "md";
 
+/*
+ * Each variant carries hover AND active states. Without `active:` a click gave
+ * no feedback at all — on a slow request the button looked untouched until the
+ * spinner appeared, so people clicked again.
+ *
+ * Hover shifts the variant's own colour rather than swapping to another token:
+ * hovering `primary` to `bg-accent` would invert it to near-black in dark mode.
+ */
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-primary text-primary-foreground hover:bg-accent disabled:hover:bg-primary",
+    "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:hover:bg-primary",
   secondary:
-    "border border-border bg-card text-foreground hover:bg-muted disabled:hover:bg-card",
-  danger: "bg-destructive text-primary-foreground hover:bg-destructive disabled:hover:bg-destructive",
-  ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+    "border border-border bg-card text-foreground hover:bg-muted active:bg-secondary disabled:hover:bg-card",
+  danger:
+    "bg-destructive text-primary-foreground hover:bg-destructive/90 active:bg-destructive/80 disabled:hover:bg-destructive",
+  ghost:
+    "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-secondary",
 };
 
 const SIZES: Record<Size, string> = {

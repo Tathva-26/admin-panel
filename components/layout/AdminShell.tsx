@@ -4,11 +4,12 @@ import { useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 
 import CommandPalette from '@/components/common/CommandPalette'
-import Spinner from '@/components/ui/Spinner'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
+import { canAccessPanel } from '@/types'
 import LoginPage from '@/app/login/page'
 import UnauthorizedPage from '@/app/unauthorized/page'
 
+import SessionLoading from './SessionLoading'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 
@@ -25,17 +26,13 @@ function AdminShellContent({ children }: { children: ReactNode }) {
   if (
     pathname === '/unauthorized' ||
     isUnauthorized ||
-    (user && user.role !== 'ADMIN')
+    (user && !canAccessPanel(user.role))
   ) {
     return <UnauthorizedPage />
   }
 
   if (loading) {
-    return (
-      <div className='flex h-dvh items-center justify-center bg-background'>
-        <Spinner className='h-8 w-8 text-foreground' />
-      </div>
-    )
+    return <SessionLoading />
   }
 
   if (!user) {

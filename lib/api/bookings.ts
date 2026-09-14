@@ -9,7 +9,11 @@ import { get, patch } from "./client";
 
 const BASE = "/admin/bookings";
 
-/** Bookings are addressed by `bookingUid`, not a numeric id. */
+/**
+ * Bookings are addressed by `bookingUid`, not a numeric id.
+ *
+ * `search` matches the booking id, the user's email and the user's name.
+ */
 export const listBookings = (query: BookingQuery = {}) =>
   get<ListResponse<Booking>>(BASE, query);
 

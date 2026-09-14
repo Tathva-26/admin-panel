@@ -1,25 +1,32 @@
 import type { AdminUser } from "@/types";
-import { API_ORIGIN, get } from "./client";
+import { get } from "./client";
 
 export const getMe = () => get<AdminUser>("/admin/me", undefined, "user");
 
-export const getGoogleAuthUrl = () => {
-  const origin = API_ORIGIN.replace(/\/+$/, "");
-  const redirect = `${window.location.origin}/auth/callback`;
-  return `${origin}/api/auth/google?redirect=${encodeURIComponent(redirect)}`;
-};
-
+/**
+ * Begins Google sign-in and returns the provider URL to navigate to.
+ *
+ * The endpoint returns `200 { url, state }` instead of redirecting, so it has to
+ * be fetched. `redirect` is where the backend sends the token afterwards; that
+ * origin must be in the backend's CORS allowlist or it replies 400.
+ */
 export const startGoogleAuth = async (): Promise<string> => {
-  const res = await fetch(getGoogleAuthUrl());
-  if (!res.ok) throw new Error("Failed to start Google sign-in");
-  const data = (await res.json()) as { url?: string };
-  if (!data.url) throw new Error("Google sign-in returned no URL");
+  const data = await get<{ url?: string }>("/auth/google", {
+    redirect: `${window.location.origin}/auth/callback`,
+  });
+
+  if (!data?.url) {
+    throw new Error("Google sign-in did not return a URL.");
+  }
   return data.url;
 };
 
 export const logout = () => {
   if (typeof window !== "undefined") {
     window.localStorage.removeItem("jwt");
+    // Hard navigation on purpose: a soft push would keep the previous admin's
+    // data in memory.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.href = "/login";
   }
 };

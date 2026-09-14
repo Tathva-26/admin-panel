@@ -7,9 +7,8 @@ import Button from "./Button";
 /**
  * The screen behind every failed request.
  *
- * Until the backend ships `/api/admin/*` this is most of what the panel shows,
- * so it states what actually went wrong — status and code included — rather
- * than a generic apology.
+ * States what actually went wrong — status and code included — rather than a
+ * generic apology.
  */
 export default function ErrorState({
   error,

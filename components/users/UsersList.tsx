@@ -11,6 +11,7 @@ import { RoleBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
+import { useAuth } from "@/context/AuthContext";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
@@ -20,8 +21,8 @@ import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
 import { ORDERS, ROLES, type AdminUser, type Role } from "@/types";
 
-/** The role a user would be moved to — this panel only ever toggles. */
-const opposite = (role: Role): Role => (role === "ADMIN" ? "USER" : "ADMIN");
+/** The role a user would be moved to. */
+const opposite = (role: Role): Role => (role === "USER" ? "ADMIN" : "USER");
 
 const EXPORT_HEADERS = [
   "ID",
@@ -59,6 +60,8 @@ export default function UsersList() {
       order: asEnum(filters.order, ORDERS),
     }),
   );
+
+  const { user: currentUser } = useAuth();
 
   const [pending, setPending] = useState<AdminUser | null>(null);
   const changeRole = useMutation((id: number, role: Role) =>
@@ -163,20 +166,30 @@ export default function UsersList() {
       header: "",
       className: "w-32",
       isActions: true,
-      cell: (user) => (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              changeRole.reset();
-              setPending(user);
-            }}
-          >
-            {user.role === "ADMIN" ? "Remove admin" : "Make admin"}
-          </Button>
-        </div>
-      ),
+      cell: (user) => {
+        // Demoting yourself takes away your own access with no way back. The
+        // backend refuses it too (403 SELF_ROLE_CHANGE); this keeps the control
+        // from being offered in the first place.
+        const isSelf = currentUser?.id === user.id;
+
+        return (
+          <div className="flex justify-end">
+            <span title={isSelf ? "You can't change your own role." : undefined}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={isSelf}
+                onClick={() => {
+                  changeRole.reset();
+                  setPending(user);
+                }}
+              >
+                {user.role === "USER" ? "Make admin" : "Remove admin"}
+              </Button>
+            </span>
+          </div>
+        );
+      },
     },
   ];
 

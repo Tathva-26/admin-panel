@@ -31,7 +31,8 @@ interface EventsListProps {
 interface BulkOutcome {
   action: string;
   succeeded: number;
-  failures: { id: number; message: string }[];
+  /** `label` names the event; a bare id tells the reader nothing. */
+  failures: { label: string; message: string }[];
 }
 
 const EXPORT_HEADERS = [
@@ -130,13 +131,16 @@ export default function EventsList({
     refreshDashboard();
   }, [refetchEvents]);
 
-  const handleRowError = useCallback((action: string, err: ApiError) => {
-    setOutcome({
-      action,
-      succeeded: 0,
-      failures: [{ id: 0, message: apiErrorMessage(err) }],
-    });
-  }, []);
+  const handleRowError = useCallback(
+    (action: string, err: ApiError, label: string) => {
+      setOutcome({
+        action,
+        succeeded: 0,
+        failures: [{ label, message: apiErrorMessage(err) }],
+      });
+    },
+    [],
+  );
 
   const activeQuery = {
     search: asText(events.filters.search),
@@ -156,27 +160,37 @@ export default function EventsList({
 
   const targets = events.items.filter((event) => selected.has(event.id));
 
+  // Only rows that would actually change. Publishing ten events when nine are
+  // already published should fire one request, not ten.
+  const toPublish = targets.filter((event) => !event.published);
+  const toUnpublish = targets.filter((event) => event.published);
+
   async function runBulk(
     action: string,
+    rows: AdminEvent[],
     call: (id: number) => Promise<unknown>,
   ) {
-    const ids = targets.map((event) => event.id);
-    if (ids.length === 0) return;
+    if (rows.length === 0) return;
 
     setBusy(true);
     setOutcome(null);
 
-    const results = await Promise.allSettled(ids.map((id) => call(id)));
+    const results = await Promise.allSettled(rows.map((row) => call(row.id)));
 
     const failures = results.flatMap((result, index) =>
       result.status === "rejected"
-        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
+        ? [
+            {
+              label: rows[index].heading,
+              message: apiErrorMessage(toApiError(result.reason)),
+            },
+          ]
         : [],
     );
 
     setBusy(false);
     setSelected(new Set());
-    setOutcome({ action, succeeded: ids.length - failures.length, failures });
+    setOutcome({ action, succeeded: rows.length - failures.length, failures });
     refetchEvents();
     refreshDashboard();
   }
@@ -257,7 +271,7 @@ export default function EventsList({
           event={event}
           onEdit={handleEdit}
           onMutated={handleMutated}
-          onError={handleRowError}
+          onError={(action, err) => handleRowError(action, err, event.heading)}
         />
       ),
     },
@@ -320,18 +334,28 @@ export default function EventsList({
               : "rounded-md border border-success/40 bg-success/15 px-3 py-2 text-sm text-success"
           }
         >
-          <p>
-            {outcome.action}: {outcome.succeeded} succeeded
-            {outcome.failures.length > 0
-              ? `, ${outcome.failures.length} failed`
-              : ""}
-            .
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <p>
+              {outcome.action}: {outcome.succeeded} succeeded
+              {outcome.failures.length > 0
+                ? `, ${outcome.failures.length} failed`
+                : ""}
+              .
+            </p>
+            <button
+              type="button"
+              onClick={() => setOutcome(null)}
+              aria-label="Dismiss"
+              className="-mr-1 -mt-0.5 shrink-0 rounded px-1.5 text-lg leading-none opacity-60 transition-opacity hover:opacity-100"
+            >
+              &times;
+            </button>
+          </div>
           {outcome.failures.length > 0 ? (
             <ul className="mt-1 list-inside list-disc">
               {outcome.failures.map((failure) => (
-                <li key={failure.id} className="numeric text-xs">
-                  #{failure.id} — {failure.message}
+                <li key={failure.label} className="text-xs">
+                  {failure.label} — {failure.message}
                 </li>
               ))}
             </ul>
@@ -370,16 +394,28 @@ export default function EventsList({
           size="sm"
           variant="primary"
           loading={busy}
-          onClick={() => runBulk("Publish", publishEvent)}
+          disabled={toPublish.length === 0}
+          title={
+            toPublish.length === 0
+              ? "Everything selected is already published."
+              : undefined
+          }
+          onClick={() => runBulk("Publish", toPublish, publishEvent)}
         >
-          Publish
+          Publish{toPublish.length > 0 ? ` (${toPublish.length})` : ""}
         </Button>
         <Button
           size="sm"
           loading={busy}
-          onClick={() => runBulk("Unpublish", unpublishEvent)}
+          disabled={toUnpublish.length === 0}
+          title={
+            toUnpublish.length === 0
+              ? "Everything selected is already a draft."
+              : undefined
+          }
+          onClick={() => runBulk("Unpublish", toUnpublish, unpublishEvent)}
         >
-          Unpublish
+          Unpublish{toUnpublish.length > 0 ? ` (${toUnpublish.length})` : ""}
         </Button>
       </BulkActionBar>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import type { ApiError } from "@/lib/api/errors";
 import type { ListResponse } from "@/types";
@@ -162,6 +162,18 @@ export function useList<T>(
   );
 
   const total = data?.total ?? 0;
+
+  /*
+   * Deleting the last row on the last page leaves the page number pointing past
+   * the end, so the table renders empty above "page 3 of 2". setFilter already
+   * resets the page when the result set narrows; this covers the same thing
+   * happening because a row was removed.
+   */
+  useEffect(() => {
+    if (loading || !data) return;
+    const lastPage = Math.max(1, Math.ceil(data.total / pageSize));
+    if (page > lastPage) setPage(lastPage);
+  }, [data, loading, page, pageSize, setPage]);
 
   return {
     items: data?.items ?? [],

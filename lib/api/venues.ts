@@ -4,11 +4,6 @@ import { del, get, patch, post } from "./client";
 
 const BASE = "/admin/venues";
 
-/**
- * The contract documents `GET /admin/venues` without query params, but every
- * list endpoint shares the paged envelope — so this accepts the standard query
- * and simply sends nothing when it is empty.
- */
 export const listVenues = (query: ListQuery = {}) =>
   get<ListResponse<Venue>>(BASE, query);
 

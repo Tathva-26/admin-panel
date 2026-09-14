@@ -6,11 +6,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { listAnnouncements } from "@/lib/api/announcements";
 import { listBookings } from "@/lib/api/bookings";
+import { listContactMessages } from "@/lib/api/contact";
 import { listEvents } from "@/lib/api/events";
 import { listUsers } from "@/lib/api/users";
 import { listVenues } from "@/lib/api/venues";
 import { formatInr } from "@/lib/format";
-import { bookingStatusLabel, eventTypeLabel } from "@/lib/labels";
+import {
+  bookingStatusLabel,
+  contactStatusLabel,
+  eventTypeLabel,
+} from "@/lib/labels";
 import { NAV_ITEMS } from "@/lib/nav";
 
 interface PaletteItem {
@@ -134,13 +139,14 @@ export default function CommandPalette({
 
       if (active) setSearching(true);
 
-      const [events, users, venues, announcements, bookings] =
+      const [events, users, venues, announcements, bookings, contacts] =
         await Promise.allSettled([
           listEvents({ search: term, pageSize: MAX_PER_GROUP }),
           listUsers({ search: term, pageSize: MAX_PER_GROUP }),
           listVenues({ search: term, pageSize: MAX_PER_GROUP }),
           listAnnouncements({ search: term, pageSize: MAX_PER_GROUP }),
           listBookings({ search: term, pageSize: MAX_PER_GROUP }),
+          listContactMessages({ search: term, pageSize: MAX_PER_GROUP }),
         ]);
 
       if (!active) return;
@@ -209,6 +215,20 @@ export default function CommandPalette({
               .join(" · "),
             group: "Bookings",
             href: `/bookings?search=${encodeURIComponent(booking.bookingUid)}`,
+          });
+        }
+      }
+
+      if (contacts.status === "fulfilled") {
+        for (const contact of contacts.value.items) {
+          next.push({
+            id: `contact:${contact.id}`,
+            label: contact.topic,
+            hint: [contact.name, contactStatusLabel(contact.status)]
+              .filter(Boolean)
+              .join(" · "),
+            group: "Contact",
+            href: `/contact-messages?search=${encodeURIComponent(contact.name)}`,
           });
         }
       }

@@ -13,29 +13,31 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). The backend must be running — there is
+no offline mode.
 
-Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without `/api` — the API
-client appends that itself.
+### Environment
 
-For temporary frontend-only work, set `NEXT_PUBLIC_MOCK_AUTH=true` in `.env.local`.
-This enables the temporary mock admin login and the in-memory data in `api/` for events,
-venues, announcements, users, bookings and dashboard stats. Mock changes reset on reload.
-Remove that variable to return to the real backend.
+| Variable | Notes |
+| --- | --- |
+| `NEXT_PUBLIC_API_URL` | Backend origin, without `/api` — the client appends it. Required for `next build`; `next dev` falls back to `http://localhost:5000`. |
+| `NEXT_PUBLIC_PAYMENT_EXPIRY_MINUTES` | How long a booking may sit pending before it reads as timed out. Must match `PAYMENT_EXPIRY_MINUTES` in the backend. Defaults to 30. |
+
+Sign-in is Google OAuth through the backend. The panel asks the backend to return the token
+to `<origin>/auth/callback`, so that origin must be listed in the backend's `CORS_ORIGIN`.
+Admin access is decided by the role on the account, not by anything in the frontend.
 
 ## Sections
 
 | Section | What it does |
 | --- | --- |
 | Dashboard | Counts across the fest, plus events that need attention |
-| Events | Create, edit, publish and archive events |
+| Events | Create, edit, publish and unpublish events |
 | Venues | Places an event can be scheduled at, and what is on at each |
 | Announcements | Notices shown on the public site once published |
 | Users | Registered users and their roles |
 | Bookings | Event and accommodation bookings, and their payment state |
-
-Sign-in is Google OAuth through the backend; admin access is decided by the role on the
-account, not by anything in the frontend.
+| Contact | Enquiries sent from the public site, and how they were handled |
 
 ## Project structure
 
@@ -54,7 +56,6 @@ lib/
   schedule.ts   what is on at a venue, and when
   attention.ts  dashboard checks for events needing review
 types/          API types
-api/            temporary in-memory mock data and request handler
 ```
 
 ## Scripts
@@ -68,8 +69,8 @@ npm run lint     # eslint
 
 ## API
 
-The panel talks to the Tathva backend over REST. Endpoint shapes are documented in
-`admin-panel-frontend-api.md`, and mirrored as types in `types/index.ts`.
+The panel talks to the Tathva backend over REST. Endpoint shapes are mirrored as types in
+`types/index.ts`.
 
 All requests go through `lib/api/client.ts`, which handles the base URL, auth header and
 error parsing. Resource modules in `lib/api/` use its helpers rather than importing axios

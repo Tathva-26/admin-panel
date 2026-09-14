@@ -43,6 +43,11 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Bookings",
     description: "Event and accommodation bookings, and their payment state.",
   },
+  {
+    href: "/contact-messages",
+    label: "Contact",
+    description: "Enquiries sent from the public site, and how they were handled.",
+  },
 ];
 
 /**

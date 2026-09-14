@@ -7,6 +7,8 @@
  *   - datetimes go over the wire as ISO 8601, but admins think in IST
  */
 
+import type { BookingStatus } from "@/types";
+
 const IST_TIME_ZONE = "Asia/Kolkata";
 
 /* ------------------------------------------------------------------ */
@@ -157,4 +159,49 @@ export function isoToDateInput(iso: string | null | undefined): string {
 export function isoToTimeInput(iso: string | null | undefined): string {
   const dt = isoToDateTimeInput(iso);
   return dt ? dt.slice(11, 16) : "";
+}
+
+/* ------------------------------------------------------------------ */
+/* Booking expiry                                                      */
+/* ------------------------------------------------------------------ */
+
+/** Matches the backend's default. */
+const DEFAULT_PAYMENT_EXPIRY_MINUTES = 30;
+
+/**
+ * Must match the backend's PAYMENT_EXPIRY_MINUTES; no endpoint exposes it.
+ *
+ * A malformed value falls back rather than becoming NaN, which would compare
+ * false everywhere and leave expired bookings reading as pending.
+ */
+function readExpiryMinutes(): number {
+  const raw = process.env.NEXT_PUBLIC_PAYMENT_EXPIRY_MINUTES?.trim();
+  if (!raw) return DEFAULT_PAYMENT_EXPIRY_MINUTES;
+
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : DEFAULT_PAYMENT_EXPIRY_MINUTES;
+}
+
+export const PAYMENT_EXPIRY_MINUTES = readExpiryMinutes();
+
+/**
+ * The status the customer sees.
+ *
+ * The backend computes TIMEOUT on read and never stores it, so a stored row can
+ * still say PENDING for a booking the user was told had expired. Applying the
+ * same rule here keeps both surfaces consistent.
+ */
+export function effectiveBookingStatus(
+  booking: { status: BookingStatus; createdAt: string },
+  now: Date = new Date(),
+): BookingStatus {
+  if (booking.status !== "PENDING") return booking.status;
+
+  const created = new Date(booking.createdAt).getTime();
+  if (Number.isNaN(created)) return booking.status;
+
+  const expiresAt = created + PAYMENT_EXPIRY_MINUTES * 60_000;
+  return now.getTime() > expiresAt ? "TIMEOUT" : "PENDING";
 }

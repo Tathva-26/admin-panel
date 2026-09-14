@@ -415,8 +415,8 @@ export default function DashboardView() {
             </h2>
 
             {stats.loading ? (
-              <div className="grid grid-cols-3 gap-4">
-                {Array.from({ length: 3 }).map((_, index) => (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, index) => (
                   <div key={index} className="space-y-2.5">
                     <div className="h-3 w-3/4 animate-pulse rounded bg-muted" />
                     <div className="h-14 animate-pulse rounded-sm bg-muted" />
@@ -424,11 +424,12 @@ export default function DashboardView() {
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   { label: "Registered Users", value: statsData.users },
                   { label: "Draft Events", value: statsData.events.drafts },
                   { label: "Failed Bookings", value: statsData.bookings.failed },
+                  { label: "New Enquiries", value: statsData.contactMessages.new },
                 ].map((stat) => (
                   <div key={stat.label} className="space-y-2.5">
                     <p className="text-[11px] text-muted-foreground font-medium truncate">

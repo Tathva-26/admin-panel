@@ -1,15 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
-import Button from "@/components/ui/Button";
+import RowActionsMenu, {
+  type RowAction,
+} from "@/components/common/RowActionsMenu";
 import { useMutation } from "@/hooks/useMutation";
-import {
-  archiveEvent,
-  publishEvent,
-  unpublishEvent,
-} from "@/lib/api/events";
+import { deleteEvent, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import type { AdminEvent } from "@/types";
 
@@ -26,120 +24,107 @@ export default function EventRowActions({
   onMutated,
   onError,
 }: EventRowActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [unpublishOpen, setUnpublishOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
+  const unpublish = useMutation((id: number) => unpublishEvent(id));
+  const remove = useMutation((id: number) => deleteEvent(id));
 
-  const archive = useMutation((id: number) => archiveEvent(id));
+  const busy = publishing || unpublish.loading || remove.loading;
 
-  const busy = toggling || archive.loading;
-
-  const handlePublishToggle = useCallback(async () => {
-    setMenuOpen(false);
-    setToggling(true);
+  // Publishing is additive and easy to undo, so it goes through without a
+  // prompt. Unpublishing pulls the event off the public site, so it asks.
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
     try {
-      if (event.published) {
-        await unpublishEvent(event.id);
-      } else {
-        await publishEvent(event.id);
-      }
+      await publishEvent(event.id);
       onMutated();
     } catch (err) {
-      onError?.(event.published ? "Unpublish" : "Publish", toApiError(err));
+      onError?.("Publish", toApiError(err));
     } finally {
-      setToggling(false);
+      setPublishing(false);
     }
-  }, [event, onMutated, onError]);
+  }, [event.id, onMutated, onError]);
 
-  const handleArchive = useCallback(async () => {
-    const result = await archive.run(event.id);
+  const confirmUnpublish = useCallback(async () => {
+    const result = await unpublish.run(event.id);
     if (result !== null) {
-      setArchiveOpen(false);
+      setUnpublishOpen(false);
       onMutated();
     }
-  }, [event.id, archive, onMutated]);
+  }, [event.id, unpublish, onMutated]);
+
+  const confirmDelete = useCallback(async () => {
+    const result = await remove.run(event.id);
+    if (result !== null) {
+      setDeleteOpen(false);
+      onMutated();
+    }
+  }, [event.id, remove, onMutated]);
+
+  const actions: RowAction[] = [
+    { label: "Edit", onClick: () => onEdit(event) },
+    {
+      label: "Publish",
+      onClick: handlePublish,
+      disabled: event.published,
+      disabledReason: "Already published.",
+    },
+    {
+      label: "Unpublish",
+      onClick: () => {
+        unpublish.reset();
+        setUnpublishOpen(true);
+      },
+      disabled: !event.published,
+      disabledReason: "Already a draft.",
+    },
+    {
+      label: "Delete",
+      onClick: () => {
+        remove.reset();
+        setDeleteOpen(true);
+      },
+      // Permanent, so it stays behind the draft state, matching announcements.
+      // An event with bookings is refused by the backend even as a draft.
+      disabled: event.published,
+      disabledReason: "Unpublish it first — published events can't be deleted.",
+      destructive: true,
+    },
+  ];
 
   return (
     <>
-      <div className="relative" ref={menuRef}>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={busy}
-          onClick={() => setMenuOpen((prev) => !prev)}
-          aria-label="Row actions"
-          className="h-7 w-7 p-0"
-        >
-          <svg
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <circle cx="10" cy="4" r="1.5" />
-            <circle cx="10" cy="10" r="1.5" />
-            <circle cx="10" cy="16" r="1.5" />
-          </svg>
-        </Button>
-
-        {menuOpen ? (
-          <div className="absolute right-0 top-full z-30 mt-1 w-40 rounded-md border border-border bg-popover py-1 shadow-lg">
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted"
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit(event);
-              }}
-            >
-              Edit
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
-              disabled={busy}
-              onClick={handlePublishToggle}
-            >
-              {event.published ? "Unpublish" : "Publish"}
-            </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setMenuOpen(false);
-                archive.reset();
-                setArchiveOpen(true);
-              }}
-            >
-              Archive
-            </button>
-          </div>
-        ) : null}
-      </div>
+      <RowActionsMenu actions={actions} busy={busy} />
 
       <ConfirmDialog
-        open={archiveOpen}
-        title="Archive Event"
-        description={`Archive "${event.heading}"? This will remove the event from listings.`}
-        confirmLabel="Archive"
+        open={unpublishOpen}
+        title="Unpublish event"
+        description={`Unpublish "${event.heading}"? It stays here as a draft and comes off the public site.`}
+        confirmLabel="Unpublish"
         destructive
-        loading={archive.loading}
-        error={archive.error}
-        onConfirm={handleArchive}
+        loading={unpublish.loading}
+        error={unpublish.error}
+        onConfirm={confirmUnpublish}
         onCancel={() => {
-          archive.reset();
-          setArchiveOpen(false);
+          unpublish.reset();
+          setUnpublishOpen(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteOpen}
+        title="Delete event"
+        description={`Delete "${event.heading}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={remove.loading}
+        error={remove.error}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          remove.reset();
+          setDeleteOpen(false);
         }}
       />
     </>

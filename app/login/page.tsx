@@ -1,17 +1,52 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import { getGoogleAuthUrl } from '@/lib/api/auth'
+import { startGoogleAuth } from '@/lib/api/auth'
+import { API_ORIGIN } from '@/lib/api/client'
+import { apiErrorMessage, toApiError, type ApiError } from '@/lib/api/errors'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
 
-  const handleLogin = () => {
-    window.location.href = getGoogleAuthUrl()
+  // The endpoint returns JSON rather than redirecting, so sign-in is a request
+  // followed by a navigation. `redirecting` is never cleared on success: the
+  // page is leaving, and clearing it would flash the button back to idle.
+  const [redirecting, setRedirecting] = useState(false)
+  const [startError, setStartError] = useState<ApiError | null>(null)
+
+  const handleLogin = async () => {
+    setStartError(null)
+    setRedirecting(true)
+    try {
+      window.location.href = await startGoogleAuth()
+    } catch (err) {
+      setStartError(toApiError(err))
+      setRedirecting(false)
+    }
   }
+
+  // Configuration failures, each invisible from the generic message alone.
+  // REDIRECT_NOT_ALLOWED is the common one: the panel is on a port the backend
+  // has no entry for, which is easy to hit since the public site wants 3000 too.
+  const startHint = (() => {
+    if (!startError) return null
+    if (startError.code === 'REDIRECT_NOT_ALLOWED') {
+      return `The backend does not accept ${typeof window === 'undefined' ? 'this origin' : window.location.origin} as a sign-in destination. Add it to CORS_ORIGIN in the backend's .env and restart it.`
+    }
+    if (startError.code === 'GOOGLE_OAUTH_NOT_CONFIGURED') {
+      return "The backend has no Google OAuth credentials set. Fill in GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in its .env."
+    }
+    if (startError.status === 429) {
+      return 'Too many sign-in attempts. Wait a minute and try again.'
+    }
+    if (!startError.status) {
+      return `Could not reach the backend at ${API_ORIGIN}. Check it is running and that NEXT_PUBLIC_API_URL points at it.`
+    }
+    return null
+  })()
 
   return (
     <div className='flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12'>
@@ -26,7 +61,7 @@ function LoginContent() {
         </div>
 
         {errorParam ? (
-          <div className='mt-6 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700'>
+          <div className='mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive'>
             {errorParam === 'session_expired' &&
               'Your session has expired. Please sign in again.'}
             {errorParam === 'missing_token' &&
@@ -40,12 +75,24 @@ function LoginContent() {
           </div>
         ) : null}
 
+        {/* Sign-in never started, as opposed to errorParam's failed round trip. */}
+        {startError ? (
+          <div className='mt-6 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive'>
+            <p className='font-medium'>Could not start Google sign-in.</p>
+            <p className='mt-1 opacity-90'>{apiErrorMessage(startError)}</p>
+            {startHint ? <p className='mt-2 opacity-90'>{startHint}</p> : null}
+          </div>
+        ) : null}
+
         <div className='mt-8'>
           <Button
             variant='primary'
             className='w-full justify-center py-2.5'
             onClick={handleLogin}
+            loading={redirecting}
+            aria-busy={redirecting}
           >
+            {redirecting ? null : (
             <svg className='h-4 w-4 mr-2' viewBox='0 0 24 24'>
               <path
                 fill='#EA4335'
@@ -64,7 +111,8 @@ function LoginContent() {
                 d='M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z'
               />
             </svg>
-            Sign in with Google OAuth
+            )}
+            {redirecting ? 'Redirecting to Google…' : 'Sign in with Google'}
           </Button>
         </div>
       </div>

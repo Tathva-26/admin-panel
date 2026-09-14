@@ -14,6 +14,7 @@
 import type {
   BookingKind,
   BookingStatus,
+  ContactStatus,
   EventType,
   Role,
 } from "@/types";
@@ -38,6 +39,13 @@ export const BOOKING_KIND_LABELS: Record<BookingKind, string> = {
   ACCOMMODATION: "Accommodation",
 };
 
+export const CONTACT_STATUS_LABELS: Record<ContactStatus, string> = {
+  NEW: "New",
+  IN_PROGRESS: "In progress",
+  RESOLVED: "Resolved",
+  SPAM: "Spam",
+};
+
 export const ROLE_LABELS: Record<Role, string> = {
   USER: "User",
   ADMIN: "Admin",
@@ -54,3 +62,6 @@ export const bookingKindLabel = (kind: BookingKind): string =>
   BOOKING_KIND_LABELS[kind] ?? kind;
 
 export const roleLabel = (role: Role): string => ROLE_LABELS[role] ?? role;
+
+export const contactStatusLabel = (status: ContactStatus): string =>
+  CONTACT_STATUS_LABELS[status] ?? status;

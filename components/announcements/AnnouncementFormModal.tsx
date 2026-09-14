@@ -146,6 +146,7 @@ function AnnouncementFormDialog({
               {...props}
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
+              maxLength={300}
               placeholder="Registration deadline extended"
             />
           )}
@@ -157,6 +158,7 @@ function AnnouncementFormDialog({
               {...props}
               value={form.content}
               onChange={(e) => set("content", e.target.value)}
+              maxLength={10000}
               placeholder="Write the announcement body…"
               rows={5}
             />
