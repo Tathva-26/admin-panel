@@ -17,25 +17,25 @@
 
 /** Shape returned by every list endpoint. */
 export interface ListResponse<T> {
-  items: T[];
-  page: number;
-  pageSize: number;
-  total: number;
+  items: T[]
+  page: number
+  pageSize: number
+  total: number
 }
 
 /** One field-level validation failure, from `details.issues[]`. */
 export interface ApiIssue {
-  path: string;
-  message: string;
+  path: string
+  message: string
 }
 
 /** Shape returned by every error, whatever the status. */
 export interface ApiErrorBody {
-  message: string;
-  code: string;
+  message: string
+  code: string
   details?: {
-    issues?: ApiIssue[];
-  };
+    issues?: ApiIssue[]
+  }
 }
 
 /**
@@ -45,108 +45,108 @@ export interface ApiErrorBody {
  * aliases get an implicit index signature, which is what lets them be passed
  * straight to the client's `QueryParams`.
  */
-export const ORDERS = ["asc", "desc"] as const;
+export const ORDERS = ['asc', 'desc'] as const
 
-export type SortOrder = (typeof ORDERS)[number];
+export type SortOrder = (typeof ORDERS)[number]
 
 export type ListQuery = {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  sort?: string;
-  order?: SortOrder;
-};
+  page?: number
+  pageSize?: number
+  search?: string
+  sort?: string
+  order?: SortOrder
+}
 
 /* ------------------------------------------------------------------ */
 /* Events                                                              */
 /* ------------------------------------------------------------------ */
 
 export const EVENT_TYPES = [
-  "workshops",
-  "lectures",
-  "competitions",
-  "general",
-] as const;
+  'workshops',
+  'lectures',
+  'competitions',
+  'general',
+] as const
 
-export type EventType = (typeof EVENT_TYPES)[number];
+export type EventType = (typeof EVENT_TYPES)[number]
 
 /** Venue as embedded in an event response. */
 export interface EventVenue {
-  id: number;
-  name: string;
-  location: string | null;
-  locId?: number | null;
+  id: number
+  name: string
+  location: string | null
+  locId?: number | null
 }
 
 export interface AdminEvent {
-  id: number;
-  type: EventType;
-  heading: string;
-  description: string | null;
-  picture: string | null;
-  datetime: string | null;
-  startTime: string | null;
-  endTime: string | null;
+  id: number
+  type: EventType
+  heading: string
+  description: string | null
+  picture: string | null
+  datetime: string | null
+  startTime: string | null
+  endTime: string | null
   /** Integer paise. */
-  price: number;
-  capacity: number | null;
-  isFull: boolean;
-  isTeamEvent: boolean;
-  teamSize: number | null;
-  published: boolean;
-  venue: EventVenue | null;
-  createdAt: string;
-  updatedAt: string;
+  price: number
+  capacity: number | null
+  isFull: boolean
+  isTeamEvent: boolean
+  teamSize: number | null
+  published: boolean
+  venue: EventVenue | null
+  createdAt: string
+  updatedAt: string
 
   // Present in the create/update body and on the public event shape, but not
   // in the doc's guaranteed response fields — treat as possibly absent.
-  catchyPara?: string | null;
-  committee?: string | null;
-  ticketId?: number | null;
+  catchyPara?: string | null
+  committee?: string | null
+  ticketId?: number | null
 }
 
 /** Body for `POST /admin/events` and (partially) `PATCH /admin/events/:id`. */
 export interface EventInput {
-  type: EventType;
-  heading: string;
-  description?: string | null;
-  catchyPara?: string | null;
-  picture?: string | null;
-  datetime?: string | null;
-  startTime?: string | null;
-  endTime?: string | null;
+  type: EventType
+  heading: string
+  description?: string | null
+  catchyPara?: string | null
+  picture?: string | null
+  datetime?: string | null
+  startTime?: string | null
+  endTime?: string | null
   /** Integer paise. */
-  price?: number;
-  ticketId?: number | null;
-  venueId?: number | null;
-  committee?: string | null;
-  isTeamEvent?: boolean;
+  price?: number
+  ticketId?: number | null
+  venueId?: number | null
+  committee?: string | null
+  isTeamEvent?: boolean
   /** Required by the backend when `isTeamEvent` is true. */
-  teamSize?: number | null;
-  capacity?: number | null;
-  published?: boolean;
+  teamSize?: number | null
+  capacity?: number | null
+  published?: boolean
 }
 
 export type EventQuery = ListQuery & {
-  type?: EventType;
-  published?: boolean;
-};
+  type?: EventType
+  published?: boolean
+}
 
 /* ------------------------------------------------------------------ */
 /* Venues                                                              */
 /* ------------------------------------------------------------------ */
 
 export interface Venue {
-  id: number;
-  name: string;
-  location: string | null;
-  locId: number | null;
+  id: number
+  name: string
+  location: string | null
+  locId: number | null
 }
 
 export interface VenueInput {
-  name: string;
-  location?: string | null;
-  locId?: number | null;
+  name: string
+  location?: string | null
+  locId?: number | null
 }
 
 /* ------------------------------------------------------------------ */
@@ -154,56 +154,56 @@ export interface VenueInput {
 /* ------------------------------------------------------------------ */
 
 export interface Announcement {
-  id: number;
-  title: string;
-  content: string;
-  published: boolean;
-  createdAt: string;
-  updatedAt: string;
+  id: number
+  title: string
+  content: string
+  published: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 export interface AnnouncementInput {
-  title: string;
-  content: string;
-  published?: boolean;
+  title: string
+  content: string
+  published?: boolean
 }
 
 export type AnnouncementQuery = ListQuery & {
-  published?: boolean;
-};
+  published?: boolean
+}
 
 /* ------------------------------------------------------------------ */
 /* Users                                                               */
 /* ------------------------------------------------------------------ */
 
-export const ROLES = ["USER", "ADMIN"] as const;
+export const ROLES = ['USER', 'ADMIN'] as const
 
-export type Role = (typeof ROLES)[number];
+export type Role = (typeof ROLES)[number]
 
 /**
  * Note: `googleSub` is deliberately absent. The contract says not to expect or
  * display it, so it is not modelled here.
  */
 export interface AdminUser {
-  id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  college: string | null;
-  district: string | null;
-  referral: string;
-  role: Role;
-  picture?: string | null;
-  createdAt: string;
-  updatedAt: string;
+  id: number
+  name: string
+  email: string
+  phone: string | null
+  college: string | null
+  district: string | null
+  referralCode: string
+  role: Role
+  picture?: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export type UserQuery = ListQuery & {
-  role?: Role;
-};
+  role?: Role
+}
 
 export interface RoleInput {
-  role: Role;
+  role: Role
 }
 
 /* ------------------------------------------------------------------ */
@@ -211,29 +211,29 @@ export interface RoleInput {
 /* ------------------------------------------------------------------ */
 
 export const BOOKING_STATUSES = [
-  "PENDING",
-  "CONFIRMED",
-  "FAILED",
-  "CANCELLED",
-  "TIMEOUT",
-] as const;
+  'PENDING',
+  'CONFIRMED',
+  'FAILED',
+  'CANCELLED',
+  'TIMEOUT',
+] as const
 
-export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+export type BookingStatus = (typeof BOOKING_STATUSES)[number]
 
-export const BOOKING_KINDS = ["EVENT", "ACCOMMODATION"] as const;
+export const BOOKING_KINDS = ['EVENT', 'ACCOMMODATION'] as const
 
-export type BookingKind = (typeof BOOKING_KINDS)[number];
+export type BookingKind = (typeof BOOKING_KINDS)[number]
 
 export interface BookingUser {
-  id: number;
-  name: string;
-  email: string;
+  id: number
+  name: string
+  email: string
 }
 
 export interface BookingEvent {
-  id: number;
-  heading: string;
-  type: EventType;
+  id: number
+  heading: string
+  type: EventType
 }
 
 /**
@@ -247,62 +247,62 @@ export interface BookingEvent {
  * after the date (24th, 25th, 26th) rather than by index.
  */
 export interface Accommodation {
-  id: number;
-  bookingId: number;
-  userId: number;
-  eventId: number;
+  id: number
+  bookingId: number
+  userId: number
+  eventId: number
   /** Free text, uppercased by the backend — typically MALE or FEMALE. */
-  gender: string;
+  gender: string
   /** Free text, uppercased by the backend — the room or block identifier. */
-  room: string;
+  room: string
   /** `YYYY-MM-DD`. */
-  startDate: string;
+  startDate: string
   /** `YYYY-MM-DD`. */
-  endDate: string;
-  nights: number;
-  foodDay24Veg: number;
-  foodDay24NonVeg: number;
-  foodDay25Veg: number;
-  foodDay25NonVeg: number;
-  foodDay26Veg: number;
-  foodDay26NonVeg: number;
-  createdAt: string;
-  updatedAt: string;
+  endDate: string
+  nights: number
+  foodDay24Veg: number
+  foodDay24NonVeg: number
+  foodDay25Veg: number
+  foodDay25NonVeg: number
+  foodDay26Veg: number
+  foodDay26NonVeg: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface Booking {
-  bookingUid: string;
-  kind: BookingKind;
-  status: BookingStatus;
-  qty: number;
+  bookingUid: string
+  kind: BookingKind
+  status: BookingStatus
+  qty: number
   /** All amounts are integer paise. */
-  amountSubtotal: number;
-  amountFee: number;
-  amountTax: number;
-  amountTotal: number;
-  currency: string;
+  amountSubtotal: number
+  amountFee: number
+  amountTax: number
+  amountTotal: number
+  currency: string
   /** Null-able: the backend emits null when the relation is missing. */
-  user: BookingUser | null;
-  event: BookingEvent | null;
+  user: BookingUser | null
+  event: BookingEvent | null
   /** Present on bookings of kind ACCOMMODATION, null otherwise. */
-  accommodation: Accommodation | null;
+  accommodation: Accommodation | null
   /** Set once a ticket has been generated for a confirmed booking. */
-  ticketUrl: string | null;
-  providerPaymentId: string | null;
+  ticketUrl: string | null
+  providerPaymentId: string | null
   /** When payment actually cleared, as opposed to when the booking was made. */
-  paidAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  paidAt: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export type BookingQuery = ListQuery & {
-  status?: BookingStatus;
-  kind?: BookingKind;
-  eventId?: number;
-};
+  status?: BookingStatus
+  kind?: BookingKind
+  eventId?: number
+}
 
 export interface BookingStatusInput {
-  status: BookingStatus;
+  status: BookingStatus
 }
 
 /* ------------------------------------------------------------------ */
@@ -310,14 +310,14 @@ export interface BookingStatusInput {
 /* ------------------------------------------------------------------ */
 
 export interface DashboardStats {
-  events: { total: number; published: number; drafts: number };
-  announcements: { total: number; published: number };
-  users: number;
+  events: { total: number; published: number; drafts: number }
+  announcements: { total: number; published: number }
+  users: number
   bookings: {
-    total: number;
-    pending: number;
-    confirmed: number;
-    failed: number;
-  };
-  contactMessages: { new: number };
+    total: number
+    pending: number
+    confirmed: number
+    failed: number
+  }
+  contactMessages: { new: number }
 }
