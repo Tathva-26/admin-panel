@@ -353,7 +353,7 @@ export default function CommandPalette({
           </ul>
         )}
 
-                    <p className="shrink-0 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
+        <p className="shrink-0 border-t border-border px-4 py-2 text-[11px] text-muted-foreground">
           ↑↓ to move · Enter to open · Esc to close
         </p>
       </div>
