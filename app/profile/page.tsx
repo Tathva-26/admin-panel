@@ -11,9 +11,8 @@ import { formatDateTime } from '@/lib/format'
 /**
  * The signed-in admin's own record.
  *
- * Read-only: this panel changes other people's roles, but the fields here
- * (name, email, college) come from the Google account and the public profile
- * flow, so editing them belongs on the main site rather than here.
+ * Read-only: the fields here (name, email, college) come from the Google
+ * account and the public profile flow, so editing them belongs on the main site rather than here.
  */
 export default function ProfilePage() {
   const { user, loading, logout } = useAuth()

@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import Avatar from "@/components/common/Avatar";
-import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
 import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
 import SearchInput from "@/components/common/SearchInput";
@@ -13,15 +12,11 @@ import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
-import { useMutation } from "@/hooks/useMutation";
-import { listUsers, updateUserRole } from "@/lib/api/users";
+import { listUsers } from "@/lib/api/users";
 import { formatDate } from "@/lib/format";
 import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
-import { ORDERS, ROLES, type AdminUser, type Role } from "@/types";
-
-/** The role a user would be moved to — this panel only ever toggles. */
-const opposite = (role: Role): Role => (role === "ADMIN" ? "USER" : "ADMIN");
+import { ORDERS, ROLES, type AdminUser } from "@/types";
 
 const EXPORT_HEADERS = [
   "ID",
@@ -30,7 +25,7 @@ const EXPORT_HEADERS = [
   "Phone",
   "College",
   "District",
-  "Referral",
+  "Referral code",
   "Role",
   "Joined",
 ];
@@ -43,7 +38,7 @@ const toExportRow = (user: AdminUser): CsvCell[] => [
   user.phone ?? "",
   user.college ?? "",
   user.district ?? "",
-  user.referral,
+  user.referralCode,
   user.role,
   formatDate(user.createdAt),
 ];
@@ -58,11 +53,6 @@ export default function UsersList() {
       sort: asText(filters.sort),
       order: asEnum(filters.order, ORDERS),
     }),
-  );
-
-  const [pending, setPending] = useState<AdminUser | null>(null);
-  const changeRole = useMutation((id: number, role: Role) =>
-    updateUserRole(id, { role }),
   );
 
   // Same filters as the table, so the export matches what is on screen rather
@@ -90,18 +80,6 @@ export default function UsersList() {
       { label: "Users", value: users.items.length - admins, tone: "neutral" },
     ];
   }, [users.items]);
-
-  async function confirmRoleChange() {
-    if (!pending) return;
-
-    const updated = await changeRole.run(pending.id, opposite(pending.role));
-    // Left open on failure: the backend refuses to demote the last admin, and
-    // that message is the whole point of asking.
-    if (updated) {
-      setPending(null);
-      users.refetch();
-    }
-  }
 
   const columns: Column<AdminUser>[] = [
     {
@@ -139,10 +117,10 @@ export default function UsersList() {
       cell: (user) => user.district || "—",
     },
     {
-      key: "referral",
-      header: "Referral",
+      key: "referralCode",
+      header: "Referral code",
       className: "numeric w-28 text-muted-foreground",
-      cell: (user) => user.referral,
+      cell: (user) => user.referralCode,
     },
     {
       key: "role",
@@ -157,26 +135,6 @@ export default function UsersList() {
       className: "numeric w-32 text-muted-foreground",
       hideOnMobile: true,
       cell: (user) => formatDate(user.createdAt),
-    },
-    {
-      key: "actions",
-      header: "",
-      className: "w-32",
-      isActions: true,
-      cell: (user) => (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              changeRole.reset();
-              setPending(user);
-            }}
-          >
-            {user.role === "ADMIN" ? "Remove admin" : "Make admin"}
-          </Button>
-        </div>
-      ),
     },
   ];
 
@@ -261,26 +219,6 @@ export default function UsersList() {
             onPageChange={users.setPage}
           />
         }
-      />
-
-      <ConfirmDialog
-        open={pending !== null}
-        title={
-          pending?.role === "ADMIN"
-            ? `Remove admin access from ${pending?.name}?`
-            : `Make ${pending?.name} an admin?`
-        }
-        description={
-          pending?.role === "ADMIN"
-            ? "They will lose access to this panel immediately."
-            : "They will get full access to this panel, including changing other people's roles."
-        }
-        confirmLabel={pending?.role === "ADMIN" ? "Remove admin" : "Make admin"}
-        destructive={pending?.role === "ADMIN"}
-        loading={changeRole.loading}
-        error={changeRole.error}
-        onConfirm={confirmRoleChange}
-        onCancel={() => setPending(null)}
       />
     </div>
   );

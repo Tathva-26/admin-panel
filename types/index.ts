@@ -202,10 +202,6 @@ export type UserQuery = ListQuery & {
   role?: Role
 }
 
-export interface RoleInput {
-  role: Role
-}
-
 /* ------------------------------------------------------------------ */
 /* Bookings                                                            */
 /* ------------------------------------------------------------------ */
