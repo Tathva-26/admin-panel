@@ -27,7 +27,7 @@ export default function VenueFormModal({
   onSaved,
 }: VenueFormModalProps) {
   const [name, setName] = useState(venue?.name ?? "");
-  const [location, setLocation] = useState(venue?.address ?? "");
+  const [location, setLocation] = useState(venue?.location ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
 
   const save = useMutation(async (body: VenueInput) =>
@@ -41,19 +41,9 @@ export default function VenueFormModal({
     }
     setNameError(null);
 
-    /*
-     * latitude and longitude are deliberately absent rather than null.
-     *
-     * This form does not manage coordinates, so it must not clear them either
-     * — a venue that arrived with a position would lose it the first time
-     * someone corrected a typo in its name. PATCH takes the fields that
-     * changed, and these did not.
-     */
     const saved = await save.run({
       name: name.trim(),
-      // The API field is `address`; "Location" is just what it is called on
-      // screen, because that is what an admin would call it.
-      address: location.trim() || null,
+      location: location.trim() || null,
     });
 
     if (saved) onSaved();
@@ -108,7 +98,7 @@ export default function VenueFormModal({
           )}
         </Field>
 
-        <Field label="Location" error={errorFor("address")}>
+        <Field label="Location" error={errorFor("location")}>
           {(props) => (
             <Input
               {...props}
