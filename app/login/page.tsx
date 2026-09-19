@@ -1,20 +1,33 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Button from '@/components/ui/Button'
-import { startGoogleAuth } from '@/lib/api/auth'
+import { signIn } from '@/lib/auth-client'
 
 function LoginContent() {
   const searchParams = useSearchParams()
   const errorParam = searchParams.get('error')
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState(false)
 
   const handleLogin = async () => {
+    if (starting) return
+    setStarting(true)
+    setStartError(false)
     try {
-      const url = await startGoogleAuth()
-      window.location.href = url
+      // better-auth resolves with { error } on HTTP failures instead of throwing.
+      // On success the client navigates to Google, so `starting` stays true.
+      const { error } = await signIn.social({
+        provider: 'google',
+        callbackURL: `${window.location.origin}/auth/callback`,
+        errorCallbackURL: `${window.location.origin}/login?error=auth_failed`,
+      })
+      if (error) throw new Error(error.message || error.statusText)
     } catch (error) {
       console.error('Failed to start Google sign-in:', error)
+      setStartError(true)
+      setStarting(false)
     }
   }
 
@@ -30,18 +43,20 @@ function LoginContent() {
           </p>
         </div>
 
-        {errorParam ? (
-          <div className='mt-6 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700'>
-            {errorParam === 'session_expired' &&
-              'Your session has expired. Please sign in again.'}
-            {errorParam === 'missing_token' &&
-              'Authentication failed. No token was provided.'}
-            {errorParam === 'unauthorized' &&
-              'You do not have permission to access the admin panel.'}
-            {errorParam !== 'session_expired' &&
-              errorParam !== 'missing_token' &&
-              errorParam !== 'unauthorized' &&
-              'Authentication error occurred. Please try again.'}
+        {errorParam || startError ? (
+          <div
+            role='alert'
+            className='mt-6 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-700'
+          >
+            {startError
+              ? 'Could not reach the sign-in service. Please try again.'
+              : errorParam === 'session_expired'
+                ? 'Your session has expired. Please sign in again.'
+                : errorParam === 'unauthorized'
+                  ? 'You do not have permission to access the admin panel.'
+                  : errorParam === 'logout_failed'
+                    ? 'Sign-out failed, so you may still be signed in. Try again.'
+                    : 'Authentication error occurred. Please try again.'}
           </div>
         ) : null}
 
@@ -50,6 +65,7 @@ function LoginContent() {
             variant='primary'
             className='w-full justify-center py-2.5'
             onClick={handleLogin}
+            disabled={starting}
           >
             <svg className='h-4 w-4 mr-2' viewBox='0 0 24 24'>
               <path

@@ -1,38 +1,28 @@
 "use client";
 
-import { Suspense, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 import Spinner from "@/components/ui/Spinner";
 import { useAuth } from "@/context/AuthContext";
 
+/*
+ * OAuth landing page. Google returns to the backend callback, which sets the
+ * httpOnly session cookie and redirects here with no token in the URL. This
+ * page waits for the session and profile to load, then routes on.
+ */
 function CallbackContent() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const { verifySession } = useAuth();
-  const started = useRef(false);
+  const { user, loading, isUnauthorized, error } = useAuth();
 
   useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-
-    const processCallback = async () => {
-      const token = searchParams.get("token");
-
-      if (!token) {
-        router.replace("/login?error=missing_token");
-        return;
-      }
-
-      window.localStorage.setItem("jwt", token);
-      window.history.replaceState({}, document.title, window.location.pathname);
-
-      await verifySession();
-      router.replace("/");
-    };
-
-    processCallback();
-  }, [searchParams, router, verifySession]);
+    if (loading) return;
+    // A signed-in non-admin goes to "/" too: the shell shows the access-denied
+    // page there, with a sign-out button.
+    if (user || isUnauthorized) router.replace("/");
+    else if (error) router.replace("/login?error=server_error");
+    else router.replace("/login?error=unauthorized");
+  }, [loading, user, isUnauthorized, error, router]);
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4">

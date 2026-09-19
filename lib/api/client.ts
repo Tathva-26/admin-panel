@@ -25,30 +25,22 @@ import axios from "axios";
 export const API_ORIGIN =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
+/*
+ * Auth is cookie-only: the backend's better-auth session lives in an httpOnly
+ * cookie the browser attaches itself (`withCredentials`). There is no
+ * Authorization header and no token in JS or localStorage.
+ */
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
-});
-
-/*
- * Auth is out of scope for now (the lead asked us to skip it), but every admin
- * request will eventually need `Authorization: Bearer <token>`. This is the one
- * place that changes when it lands — nothing else should read the token.
- */
-api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = window.localStorage.getItem("jwt");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+  withCredentials: true,
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (typeof window !== "undefined" && error.response?.status === 401) {
-      window.localStorage.removeItem("jwt");
       if (window.location.pathname !== "/login") {
         // Hard navigation, as with logout: an expired session must not
         // leave the previous admin's data sitting in memory.

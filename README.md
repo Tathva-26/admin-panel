@@ -16,7 +16,9 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 Set `NEXT_PUBLIC_API_URL` in `.env.local` to the backend origin, without `/api` — the API
-client appends that itself.
+client appends that itself. Auth is cookie-only (better-auth session on the backend), so the
+backend must allow this origin with credentials (CORS `Access-Control-Allow-Credentials`) and
+trust it as a better-auth origin.
 
 For temporary frontend-only work, set `NEXT_PUBLIC_MOCK_AUTH=true` in `.env.local`.
 This enables the temporary mock admin login and the in-memory data in `api/` for events,
