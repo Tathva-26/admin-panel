@@ -42,7 +42,7 @@ const EXPORT_HEADERS = [
   "Starts",
   "Ends",
   "Price (INR)",
-  "Capacity",
+  "Tickets remaining",
   "Venue",
   "Committee",
   "Team event",
@@ -59,7 +59,7 @@ const toExportRow = (event: AdminEvent) => [
     : "",
   event.endTime ? formatDateTime(event.endTime) : "",
   paiseToRupeeInput(event.price),
-  event.capacity ?? "",
+  event.ticketsRemaining ?? "",
   event.venue?.name ?? "",
   event.committee ?? "",
   event.isTeamEvent ? "Yes" : "No",
@@ -85,7 +85,6 @@ export default function EventsList({
     }),
   );
   const refetchEvents = events.refetch;
-  const setEventFilter = events.setFilter;
 
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -106,24 +105,29 @@ export default function EventsList({
   const closeForm = useCallback(() => {
     setFormOpen(false);
     setEditingEvent(null);
-    if (searchParams.get("new") === "true") {
-      setEventFilter("new", null);
-    }
-    if (searchParams.get("eventId")) {
-      setEventFilter("eventId", null);
-    }
+    const next = new URLSearchParams(window.location.search);
+    next.delete("new");
+    next.delete("eventId");
+    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
     onCreateClose?.();
-  }, [searchParams, onCreateClose, setEventFilter]);
+  }, [onCreateClose]);
 
   const handleEdit = useCallback((event: AdminEvent) => {
     setEditingEvent(event);
     setFormOpen(true);
   }, []);
 
-  const handleSaved = useCallback(() => {
+  const handleSaved = useCallback((_event?: AdminEvent, created = false) => {
+    closeForm();
+    if (created) {
+      // A successful draft must not disappear behind an old filter or page.
+      const next = new URLSearchParams(window.location.search);
+      ["page", "search", "type", "published", "sort", "order"].forEach((key) => next.delete(key));
+      window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
+    }
     refetchEvents();
     refreshDashboard();
-  }, [refetchEvents]);
+  }, [refetchEvents, closeForm]);
 
   const handleMutated = useCallback(() => {
     refetchEvents();
@@ -224,12 +228,12 @@ export default function EventsList({
       cell: (event) => formatInr(event.price),
     },
     {
-      key: "capacity",
-      header: "Capacity",
+      key: "ticketsRemaining",
+      header: "Tickets remaining",
       align: "right",
       className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
-      cell: (event) => event.capacity ?? "—",
+      cell: (event) => event.ticketsRemaining ?? "—",
     },
     {
       key: "createdAt",

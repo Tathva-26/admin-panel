@@ -15,11 +15,22 @@ export const listEvents = (query: EventQuery = {}) =>
 export const getEvent = (id: number) =>
   get<AdminEvent>(`${BASE}/${id}`, undefined, "event");
 
-export const createEvent = (body: EventInput) =>
-  post<AdminEvent>(BASE, body, "event");
+function eventBody(body: Partial<EventInput>, image?: File | null) {
+  // Optional ticket IDs must be omitted, not sent as null to Prisma's Int.
+  const data = { ...body };
+  if (data.ticketId == null) delete data.ticketId;
+  if (!image) return data;
+  const multipart = new FormData();
+  multipart.append("data", JSON.stringify(data));
+  multipart.append("image", image);
+  return multipart;
+}
 
-export const updateEvent = (id: number, body: Partial<EventInput>) =>
-  patch<AdminEvent>(`${BASE}/${id}`, body, "event");
+export const createEvent = (body: EventInput, image?: File | null) =>
+  post<AdminEvent>(BASE, eventBody(body, image), "event");
+
+export const updateEvent = (id: number, body: Partial<EventInput>, image?: File | null) =>
+  patch<AdminEvent>(`${BASE}/${id}`, eventBody(body, image), "event");
 
 export const publishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/publish`, {}, "event");

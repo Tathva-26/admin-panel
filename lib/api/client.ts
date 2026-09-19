@@ -32,7 +32,6 @@ export const API_ORIGIN =
  */
 export const api = axios.create({
   baseURL: `${API_ORIGIN}/api`,
-  headers: { "Content-Type": "application/json" },
   timeout: 15_000,
   withCredentials: true,
 });
@@ -190,7 +189,8 @@ export async function post<T>(
   body?: unknown,
   key?: string,
 ): Promise<T> {
-  const res = await api.post(path, body ?? {});
+  const res = await api.post(path, body ?? {},
+    body instanceof FormData ? { timeout: 120_000 } : undefined);
   return unwrap<T>(res.data, key);
 }
 
@@ -199,7 +199,8 @@ export async function patch<T>(
   body?: unknown,
   key?: string,
 ): Promise<T> {
-  const res = await api.patch(path, body ?? {});
+  const res = await api.patch(path, body ?? {},
+    body instanceof FormData ? { timeout: 120_000 } : undefined);
   return unwrap<T>(res.data, key);
 }
 

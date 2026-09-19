@@ -69,15 +69,24 @@ export function toApiError(err: unknown): ApiError {
 
     const body = response.data;
     const known = isApiErrorBody(body) ? body : null;
+    const backendError = body && typeof body === "object" ? body.error : undefined;
+    const issues: ApiIssue[] = Array.isArray(backendError)
+      ? backendError.filter((issue) => typeof issue?.message === "string").map((issue) => ({
+          path: Array.isArray(issue.path) ? issue.path.join(".") : String(issue.path ?? ""),
+          message: issue.message,
+        }))
+      : known?.details?.issues ?? [];
 
     return {
       status: response.status,
       code: known?.code ?? "UNKNOWN_ERROR",
       message:
         known?.message ??
+        (typeof backendError === "string" ? backendError : undefined) ??
+        (issues.length ? "Please correct the highlighted fields." : undefined) ??
         FALLBACK_MESSAGES[response.status] ??
         "Something went wrong.",
-      issues: known?.details?.issues ?? [],
+      issues,
       retryAfter: parseRetryAfter(response.headers?.["retry-after"]),
     };
   }

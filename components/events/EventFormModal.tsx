@@ -39,7 +39,7 @@ interface EventFormModalProps {
   onClose: () => void
   event?: AdminEvent | null
   eventId?: number | null
-  onSaved: () => void
+  onSaved: (event?: AdminEvent, created?: boolean) => void
 }
 
 function blankForm(): EventInput {
@@ -53,12 +53,12 @@ function blankForm(): EventInput {
     startTime: null,
     endTime: null,
     price: 0,
-    ticketId: null,
+    ticketId: undefined,
     venueId: null,
     committee: '',
     isTeamEvent: false,
     teamSize: null,
-    capacity: null,
+    ticketsRemaining: 999,
     published: false,
   }
 }
@@ -74,12 +74,12 @@ function eventToForm(event: AdminEvent): EventInput {
     startTime: event.startTime,
     endTime: event.endTime,
     price: event.price,
-    ticketId: event.ticketId ?? null,
+    ticketId: event.ticketId,
     venueId: event.venue?.id ?? null,
     committee: event.committee ?? '',
     isTeamEvent: event.isTeamEvent,
     teamSize: event.teamSize,
-    capacity: event.capacity,
+    ticketsRemaining: event.ticketsRemaining,
     published: event.published,
   }
 }
@@ -91,7 +91,7 @@ function EventFormDialog({
 }: {
   onClose: () => void
   event?: AdminEvent | null
-  onSaved: () => void
+  onSaved: (event?: AdminEvent, created?: boolean) => void
 }) {
   const isEdit = !!event
 
@@ -113,22 +113,38 @@ function EventFormDialog({
   )
 
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [image, setImage] = useState<{ file: File; url: string } | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => () => { if (image) URL.revokeObjectURL(image.url) }, [image])
+
+  function selectImage(file?: File) {
+    if (!file) return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif', 'image/gif', 'image/tiff', 'image/bmp', 'image/x-ms-bmp']
+    const configuredMax = Number(process.env.NEXT_PUBLIC_EVENT_IMAGE_MAX_MB)
+    const maxMB = Number.isFinite(configuredMax) && configuredMax > 0 ? configuredMax : 2
+    if (!allowed.includes(file.type)) {
+      setImageError('Choose a supported raster image, such as PNG, JPEG or WebP. SVG is not allowed.')
+      return
+    }
+    if (!file.size || file.size > maxMB * 1024 * 1024) {
+      setImageError(`Choose a nonempty image up to ${maxMB} MB.`)
+      return
+    }
+    setImageError(null)
+    setImage({ file, url: URL.createObjectURL(file) })
+  }
 
   const venues = useApi<ListResponse<Venue>>('venues:all', listVenues)
 
-  const create = useMutation((body: EventInput) => createEvent(body))
-  const update = useMutation((id: number, body: Partial<EventInput>) =>
-    updateEvent(id, body),
+  const create = useMutation((body: EventInput, file?: File) => createEvent(body, file))
+  const update = useMutation((id: number, body: Partial<EventInput>, file?: File) =>
+    updateEvent(id, body, file),
   )
   const archive = useMutation((id: number) => archiveEvent(id))
 
   const mutation = isEdit ? update : create
-
-  useEffect(() => {
-    if (mutation.error?.status === 409) {
-      onSaved()
-    }
-  }, [mutation.error, onSaved])
 
   const set = <K extends keyof EventInput>(key: K, value: EventInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -185,27 +201,21 @@ function EventFormDialog({
   }
 
   async function handleSubmit() {
+    if (mutation.loading || archive.loading || imageError) return
+    setFormError(null)
     const paise = rupeeInputToPaise(priceInput)
-    if (paise === null) return
-
-    const startIso =
-      dateInput && startTimeInput
-        ? dateTimeInputToIso(`${dateInput}T${startTimeInput}`)
-        : null
-    const endIso =
-      dateInput && endTimeInput
-        ? dateTimeInputToIso(`${dateInput}T${endTimeInput}`)
-        : null
-    const datetimeIso =
-      startIso ?? (dateInput ? dateTimeInputToIso(`${dateInput}T00:00`) : null)
-
-    const body: EventInput = {
-      ...form,
-      price: paise,
-      datetime: datetimeIso,
-      startTime: startIso,
-      endTime: endIso,
+    if (paise === null) {
+      setFormError('Enter a valid nonnegative price in rupees.')
+      return
     }
+    if (!form.heading.trim() || !dateInput) {
+      setFormError('Heading and date are required.')
+      return
+    }
+
+    // Date/time handlers update form state. Preserve exact stored timestamps
+    // when only text or the image changes (including seconds and timezone).
+    const body: EventInput = { ...form, price: paise }
 
     if (!body.isTeamEvent) {
       body.teamSize = null
@@ -220,21 +230,19 @@ function EventFormDialog({
         }
       })
 
-      if (Object.keys(changed).length === 0) {
+      if (Object.keys(changed).length === 0 && !image) {
         onClose()
         return
       }
 
-      const result = await update.run(event.id, changed)
+      const result = await update.run(event.id, changed, image?.file)
       if (result) {
-        onSaved()
-        onClose()
+        onSaved(result, !isEdit)
       }
     } else {
-      const result = await create.run(body)
+      const result = await create.run(body, image?.file)
       if (result) {
-        onSaved()
-        onClose()
+        onSaved(result, !isEdit)
       }
     }
   }
@@ -292,13 +300,14 @@ function EventFormDialog({
           </div>
         }
       >
-        {mutation.error && mutation.error.issues.length === 0 ? (
-          <p className='mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
+        {formError ? <p role='alert' className='mb-4 text-sm text-red-700'>{formError}</p> : null}
+        {mutation.error ? (
+          <p role='alert' className='mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700'>
             {apiErrorMessage(mutation.error)}
           </p>
         ) : null}
 
-        <div className='space-y-4'>
+        <fieldset disabled={mutation.loading || archive.loading} className='space-y-4'>
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
             <Field label='Heading' error={fields.heading} required>
               {(props) => (
@@ -353,107 +362,45 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label='Picture' error={fields.picture}>
+          <Field label='Picture' error={imageError ?? fields.image ?? fields.picture}>
             {(props) => (
               <div
-                {...props}
-                onDragOver={(e) => {
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
                   e.preventDefault()
-                  e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
+                  if (!mutation.loading) selectImage(e.dataTransfer.files?.[0])
                 }}
-                onDragLeave={(e) => {
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-                }}
-                onDrop={async (e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-
-                  const file = e.dataTransfer.files?.[0]
-
-                  if (!file || !file.type.startsWith('image/')) {
-                    return
-                  }
-
-                  // Upload the image here
-                  const formData = new FormData()
-                  formData.append('file', file)
-
-                  const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                  })
-
-                  if (!res.ok) {
-                    return
-                  }
-
-                  const data = await res.json()
-                  set('picture', data.url)
-                }}
-                className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
-                onClick={() =>
-                  document.getElementById('picture-upload')?.click()
-                }
+                className='space-y-3 rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-4'
               >
-                <input
-                  id='picture-upload'
+                <Input
+                  {...props}
                   type='file'
-                  accept='image/*'
-                  className='hidden'
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-
-                    if (!file) return
-
-                    const formData = new FormData()
-                    formData.append('file', file)
-
-                    const res = await fetch('/api/upload', {
-                      method: 'POST',
-                      body: formData,
-                    })
-
-                    if (!res.ok) return
-
-                    const data = await res.json()
-                    set('picture', data.url)
+                  accept='image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,image/gif,image/tiff,image/bmp,image/x-ms-bmp'
+                  onChange={(e) => {
+                    selectImage(e.target.files?.[0])
+                    e.target.value = ''
                   }}
                 />
-
-                {form.picture ? (
-                  <div className='space-y-3'>
-                    <img
-                      src={form.picture}
-                      alt='Preview'
-                      className='mx-auto h-32 w-32 rounded-lg object-cover'
-                    />
-                    <p className='text-xs text-zinc-500'>
-                      Click or drop another image to replace
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <p className='text-sm font-medium text-zinc-700'>
-                      Drag & drop an image here
-                    </p>
-                    <p className='mt-1 text-xs text-zinc-500'>
-                      or click to browse
-                    </p>
-                    <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
-                  </>
-                )}
+                {image?.url || form.picture ? (
+                  // Local blob previews and existing external CDN URLs bypass Next image optimization.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={image?.url ?? form.picture ?? ''} alt='Event preview' className='mx-auto max-h-48 rounded-lg object-contain' />
+                ) : null}
+                <p className='text-xs text-zinc-500'>
+                  Choose or drop an image. It uploads when you save. Leave unchanged to keep the current image.
+                </p>
+                {image ? <p className='text-xs text-zinc-600'>Selected: {image.file.name}</p> : null}
+                {image || imageError ? (
+                  <Button size='sm' onClick={() => { setImage(null); setImageError(null) }}>
+                    {isEdit ? 'Keep current image' : 'Clear selection'}
+                  </Button>
+                ) : null}
               </div>
             )}
           </Field>
 
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-            <Field label='Date' error={fields.datetime}>
+            <Field label='Date' error={fields.datetime} required>
               {(props) => (
                 <Input
                   {...props}
@@ -505,20 +452,20 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label='Capacity' error={fields.capacity}>
+            <Field label='Tickets remaining' error={fields.ticketsRemaining}>
               {(props) => (
                 <Input
                   {...props}
                   type='number'
                   min={0}
-                  value={form.capacity ?? ''}
+                  value={form.ticketsRemaining ?? ''}
                   onChange={(e) =>
                     set(
-                      'capacity',
-                      e.target.value ? Number(e.target.value) : null,
+                      'ticketsRemaining',
+                      e.target.value ? Number(e.target.value) : undefined,
                     )
                   }
-                  placeholder='100'
+                  placeholder='999'
                 />
               )}
             </Field>
@@ -556,7 +503,7 @@ function EventFormDialog({
               />
             )}
           </Field>
-        </div>
+        </fieldset>
       </Modal>
 
       {isEdit && event ? (
@@ -573,7 +520,6 @@ function EventFormDialog({
             if (result !== null) {
               setArchiveOpen(false)
               onSaved()
-              onClose()
             }
           }}
           onCancel={() => {
@@ -593,7 +539,7 @@ function EventFormLoader({
 }: {
   eventId: number
   onClose: () => void
-  onSaved: () => void
+  onSaved: (event?: AdminEvent, created?: boolean) => void
 }) {
   const eventApi = useApi<AdminEvent>(`event:${eventId}`, () =>
     getEvent(eventId),

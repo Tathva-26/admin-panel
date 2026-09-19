@@ -89,7 +89,7 @@ export interface AdminEvent {
   endTime: string | null
   /** Integer paise. */
   price: number
-  capacity: number | null
+  ticketsRemaining: number
   isFull: boolean
   isTeamEvent: boolean
   teamSize: number | null
@@ -102,7 +102,7 @@ export interface AdminEvent {
   // in the doc's guaranteed response fields — treat as possibly absent.
   catchyPara?: string | null
   committee?: string | null
-  ticketId?: number | null
+  ticketId?: number
 }
 
 /** Body for `POST /admin/events` and (partially) `PATCH /admin/events/:id`. */
@@ -117,13 +117,13 @@ export interface EventInput {
   endTime?: string | null
   /** Integer paise. */
   price?: number
-  ticketId?: number | null
+  ticketId?: number
   venueId?: number | null
   committee?: string | null
   isTeamEvent?: boolean
   /** Required by the backend when `isTeamEvent` is true. */
   teamSize?: number | null
-  capacity?: number | null
+  ticketsRemaining?: number
   published?: boolean
 }
 
