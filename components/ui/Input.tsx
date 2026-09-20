@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 /** Shared so an input, select and textarea cannot drift apart visually. */
 const CONTROL =
   "block w-full rounded-md border border-input bg-background px-2.5 text-sm text-foreground " +
-  "placeholder:text-muted-foreground focus:border-ring focus:outline-none " +
+  "placeholder:text-zinc-500 focus:border-ring focus:outline-none " +
   "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground " +
   "aria-[invalid]:border-destructive aria-[invalid]:focus:border-destructive";
 

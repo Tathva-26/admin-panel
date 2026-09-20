@@ -308,7 +308,7 @@ export default function CommandPalette({
           }}
           onKeyDown={onInputKeyDown}
           placeholder="Search events, people, venues, bookings…"
-          className="w-full shrink-0 border-b border-border px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="w-full shrink-0 border-b border-border px-4 py-3 text-sm text-foreground outline-none placeholder:text-zinc-500"
         />
 
         {items.length === 0 ? (
