@@ -6,15 +6,16 @@ import Link from "next/link";
 import ErrorState from "@/components/ui/ErrorState";
 import { useApi } from "@/hooks/useApi";
 import { getDashboard } from "@/lib/api/dashboard";
-import { listBookings } from "@/lib/api/bookings";
+import { listContacts } from "@/lib/api/contacts";
 import { listEvents } from "@/lib/api/events";
 import { listAnnouncements } from "@/lib/api/announcements";
 import { findEventIssues } from "@/lib/attention";
 import { DASHBOARD_REFRESH_EVENT } from "@/lib/refresh";
+import { formatDate } from "@/lib/format";
 import type {
   AdminEvent,
   Announcement,
-  Booking,
+  Contact,
   DashboardStats,
   ListResponse,
 } from "@/types";
@@ -41,16 +42,20 @@ export default function DashboardView() {
     () => listAnnouncements({ pageSize: 3, published: true }),
   );
 
-  const bookings = useApi<ListResponse<Booking>>(
-    "dashboard:bookings",
-    () => listBookings({ pageSize: 3, status: "PENDING" }),
+  /*
+   * Contact messages stand in for what used to be a bookings panel. Bookings
+   * are TIQR's, not ours — there is nothing to list — whereas an unanswered
+   * enquiry is the thing on this backend that actually needs someone to act.
+   */
+  const contacts = useApi<ListResponse<Contact>>("dashboard:contacts", () =>
+    listContacts({ pageSize: 3, status: "NEW" }),
   );
 
   const refetchStats = stats.refetch;
   const refetchEvents = events.refetch;
   const refetchAttentionEvents = attentionEvents.refetch;
   const refetchAnnouncements = announcements.refetch;
-  const refetchBookings = bookings.refetch;
+  const refetchContacts = contacts.refetch;
 
   useEffect(() => {
     const refresh = () => {
@@ -58,7 +63,7 @@ export default function DashboardView() {
       refetchEvents();
       refetchAttentionEvents();
       refetchAnnouncements();
-      refetchBookings();
+      refetchContacts();
     };
 
     window.addEventListener(DASHBOARD_REFRESH_EVENT, refresh);
@@ -68,7 +73,7 @@ export default function DashboardView() {
     refetchEvents,
     refetchAttentionEvents,
     refetchAnnouncements,
-    refetchBookings,
+    refetchContacts,
   ]);
 
   const issues = useMemo(
@@ -84,17 +89,28 @@ export default function DashboardView() {
     );
   }
 
+  // Exactly the six counts GET /admin/dashboard returns, zeroed until it lands.
   const statsData = stats.data ?? {
-    events: { total: 0, published: 0, drafts: 0 },
-    announcements: { total: 0, published: 0 },
     users: 0,
-    bookings: { total: 0, pending: 0, confirmed: 0, failed: 0 },
-    contactMessages: { new: 0 },
+    events: 0,
+    venues: 0,
+    announcements: 0,
+    contacts: 0,
+    pendingContacts: 0,
   };
 
   const eventsList = events.data?.items ?? [];
   const announcementsList = announcements.data?.items ?? [];
-  const bookingsList = bookings.data?.items ?? [];
+  const contactsList = contacts.data?.items ?? [];
+
+  /*
+   * An event is bookable only once TIQR has issued a ticket for it. A publish
+   * whose sync failed leaves `ticketId` at 0 — live on the public site, 409 on
+   * every booking attempt — so it is worth counting where an admin will see it.
+   */
+  const unsynced = (attentionEvents.data?.items ?? []).filter(
+    (event) => event.published && !event.ticketId,
+  ).length;
 
   return (
     <div className="space-y-5">
@@ -140,36 +156,38 @@ export default function DashboardView() {
                     <span className="text-muted-foreground">Loading...</span>
                   ) : (
                     <>
-                      Published:{" "}
                       <span className="font-bold text-foreground">
-                        {statsData.events.published}
+                        {statsData.events}
                       </span>
-                      {" "}/ {statsData.events.total} Events
+                      {" "}active across {statsData.venues} venue
+                      {statsData.venues === 1 ? "" : "s"}
                     </>
                   )}
                 </p>
               </div>
             </div>
 
-            {/* Card 2: Bookings Overview */}
+            {/* Card 2: Contact messages. There is no bookings card: TIQR owns
+                bookings and this backend stores none, so any count here would
+                be invented. */}
             <div className="bg-card rounded-md p-4 border border-border flex items-center gap-3.5">
               <div className="w-9 h-9 rounded bg-muted border border-border text-foreground font-extrabold text-xs flex items-center justify-center shrink-0">
-                BK
+                MSG
               </div>
               <div className="min-w-0 flex-1">
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
-                  Bookings Overview
+                  Messages
                 </h3>
                 <p className="text-xs text-muted-foreground font-medium mt-0.5">
                   {stats.loading ? (
                     <span className="text-muted-foreground">Loading...</span>
                   ) : (
                     <>
-                      Confirmed:{" "}
+                      New:{" "}
                       <span className="font-bold text-foreground">
-                        {statsData.bookings.confirmed}
+                        {statsData.pendingContacts}
                       </span>
-                      {" "}/ {statsData.bookings.total} Bookings
+                      {" "}/ {statsData.contacts} Enquiries
                     </>
                   )}
                 </p>
@@ -262,7 +280,7 @@ export default function DashboardView() {
             )}
           </div>
 
-          {/* 3. Bottom Row: Announcements & Pending Bookings Panels */}
+          {/* 3. Bottom Row: Announcements & New Messages Panels */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
             {/* Announcements Panel */}
@@ -325,69 +343,58 @@ export default function DashboardView() {
               )}
             </div>
 
-            {/* Pending Bookings Panel */}
+            {/* New Messages Panel */}
             <div className="bg-card rounded-md p-5 border border-border space-y-4">
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <h2 className="text-sm font-bold text-foreground">
-                  Your Pending Bookings
+                  New Messages
                 </h2>
                 <Link
-                  href="/bookings"
+                  href="/contact-messages"
                   className="text-xs font-bold text-foreground hover:underline flex items-center gap-1"
                 >
                   View all &gt;
                 </Link>
               </div>
 
-              {bookings.loading ? (
+              {contacts.loading ? (
                 <div className="space-y-3">
                   {Array.from({ length: 3 }).map((_, index) => (
                     <div key={index} className="h-8 animate-pulse rounded bg-muted" />
                   ))}
                 </div>
-              ) : bookings.error ? (
-                <ErrorState error={bookings.error} onRetry={bookings.refetch} />
-              ) : bookingsList.length === 0 ? (
+              ) : contacts.error ? (
+                <ErrorState error={contacts.error} onRetry={contacts.refetch} />
+              ) : contactsList.length === 0 ? (
                 <p className="py-6 text-center text-xs font-medium text-muted-foreground">
-                  No bookings found.
+                  Nothing unanswered.
                 </p>
               ) : (
                 <div className="space-y-3 divide-y divide-border">
-                  {bookingsList.slice(0, 3).map((b) => (
-                    <div
-                      key={b.bookingUid}
+                  {contactsList.slice(0, 3).map((contact) => (
+                    <Link
+                      key={contact.id}
+                      href="/contact-messages?status=NEW"
                       className="pt-3 first:pt-0 flex items-center justify-between gap-2.5"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="w-8 h-8 rounded bg-muted border border-border text-foreground font-bold text-[10px] flex items-center justify-center shrink-0">
-                          BK
+                          {contact.name.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <h4 className="text-xs font-bold text-foreground truncate">
-                            {b.event?.heading ||
-                              b.user?.name ||
-                              "Booking #" + b.bookingUid}
+                            {contact.topic || contact.name}
                           </h4>
-                          <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 mt-0.5">
-                            <span>
-                              {new Date(b.createdAt).toLocaleDateString(
-                                "en-US",
-                                { month: "short", day: "numeric" },
-                              )}
-                            </span>
-                            •
-                            <span className="text-foreground font-semibold">
-                              {b.qty} Ticket{b.qty > 1 ? "s" : ""}
-                            </span>
+                          <p className="text-[10px] text-muted-foreground font-medium truncate mt-0.5">
+                            {contact.name} • {formatDate(contact.createdAt)}
                           </p>
                         </div>
                       </div>
 
-                      {/* NO PILLS — Compact Rectangular Status Badge */}
                       <span className="bg-warning/15 text-warning text-[10px] font-bold px-2 py-0.5 rounded border border-warning/40 uppercase tracking-wider shrink-0">
-                        {b.status}
+                        New
                       </span>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -411,7 +418,7 @@ export default function DashboardView() {
           {/* 2. Ticket Selling Panel */}
           <div className="bg-card rounded-md p-5 border border-border space-y-4">
             <h2 className="text-sm font-bold text-foreground border-b border-border pb-3">
-              Ticket Selling
+              At a Glance
             </h2>
 
             {stats.loading ? (
@@ -427,8 +434,8 @@ export default function DashboardView() {
               <div className="grid grid-cols-3 gap-4">
                 {[
                   { label: "Registered Users", value: statsData.users },
-                  { label: "Draft Events", value: statsData.events.drafts },
-                  { label: "Failed Bookings", value: statsData.bookings.failed },
+                  { label: "Announcements", value: statsData.announcements },
+                  { label: "Unsynced Events", value: unsynced },
                 ].map((stat) => (
                   <div key={stat.label} className="space-y-2.5">
                     <p className="text-[11px] text-muted-foreground font-medium truncate">

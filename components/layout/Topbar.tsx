@@ -14,7 +14,7 @@ import { roleLabel } from "@/lib/labels";
  * "Dashboard" on all six pages.
  *
  * It also carries no page actions. "New event" belongs on the events page, not
- * on bookings.
+ * on messages.
  */
 export default function Topbar({
   onMenuClick,

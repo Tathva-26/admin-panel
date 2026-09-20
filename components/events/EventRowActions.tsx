@@ -8,6 +8,7 @@ import { useMutation } from "@/hooks/useMutation";
 import {
   archiveEvent,
   publishEvent,
+  syncEvent,
   unpublishEvent,
 } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
@@ -46,6 +47,14 @@ export default function EventRowActions({
 
   const busy = toggling || archive.loading;
 
+  /*
+   * Publishing also pushes the event to TIQR, which is what creates the ticket
+   * that makes it bookable. That push is best-effort: it can fail while the
+   * publish itself succeeds, and it reports that in the body rather than by
+   * throwing. Left unreported, the event sits live on the public site 409-ing
+   * every booking — so a failed sync is raised here as an error even though
+   * the request was a 200.
+   */
   const handlePublishToggle = useCallback(async () => {
     setMenuOpen(false);
     setToggling(true);
@@ -53,7 +62,17 @@ export default function EventRowActions({
       if (event.published) {
         await unpublishEvent(event.id);
       } else {
-        await publishEvent(event.id);
+        const result = await publishEvent(event.id);
+        if (result.tiqrSync && !result.tiqrSync.ok) {
+          onError?.("Publish", {
+            status: 0,
+            code: "TIQR_SYNC_FAILED",
+            message: `Published, but TIQR did not accept it (${result.tiqrSync.error}). It is live and unbookable until a re-sync succeeds.`,
+            issues: [],
+            detail: result.tiqrSync.detail ?? null,
+            retryAfter: null,
+          });
+        }
       }
       onMutated();
     } catch (err) {
@@ -62,6 +81,20 @@ export default function EventRowActions({
       setToggling(false);
     }
   }, [event, onMutated, onError]);
+
+  /** Retry of the TIQR push alone. Idempotent, and resumes a partial sync. */
+  const handleSync = useCallback(async () => {
+    setMenuOpen(false);
+    setToggling(true);
+    try {
+      await syncEvent(event.id);
+      onMutated();
+    } catch (err) {
+      onError?.("Sync to TIQR", toApiError(err));
+    } finally {
+      setToggling(false);
+    }
+  }, [event.id, onMutated, onError]);
 
   const handleArchive = useCallback(async () => {
     const result = await archive.run(event.id);
@@ -113,6 +146,19 @@ export default function EventRowActions({
             >
               {event.published ? "Unpublish" : "Publish"}
             </button>
+            {/* Only offered where it can do something: an unsynced event.
+                Re-syncing one TIQR already has is a no-op, and TIQR has no
+                update endpoint, so edits never propagate either way. */}
+            {event.published && !event.ticketId ? (
+              <button
+                type="button"
+                className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
+                disabled={busy}
+                onClick={handleSync}
+              >
+                Re-sync to TIQR
+              </button>
+            ) : null}
             <button
               type="button"
               className="flex w-full items-center px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"

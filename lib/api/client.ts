@@ -21,9 +21,11 @@ import axios from "axios";
  * 404 page parsed as an API error instead of a plain "cannot reach the
  * backend". That was survivable while an in-repo mock answered those paths;
  * it no longer exists.
+ *
+ * 8000 is the backend's own default (`backend_v2/src/config/env.js`).
  */
 export const API_ORIGIN =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /*
  * Auth is cookie-only: the backend's better-auth session lives in an httpOnly
@@ -82,33 +84,29 @@ function cleanParams(params?: QueryParams): QueryParams | undefined {
 }
 
 /**
- * Resource endpoints wrap their payload — `{ "event": { … } }` — while list
- * endpoints return `{ items, page, pageSize, total }` directly. Pass `key` to
- * unwrap the former.
+ * Resource endpoints wrap their payload — `{ "event": { … } }`, `{ "user": … }`
+ * — so pass `key` to reach inside. If the key is absent the body is returned
+ * as-is, which is what `GET /api/user/` (unwrapped by design) needs.
  *
- * If the key is absent from the response the body is returned as-is, so a
- * backend that stops wrapping (or has not started yet) does not crash the UI.
- *
- * Also tries common alternative keys ("data", "result") if the primary key
- * is not found, to handle backends with different wrapping conventions.
+ * No guessing at alternative keys: a body that happens to carry `data` or
+ * `result` alongside the real payload would be unwrapped to the wrong thing,
+ * and that failure is invisible until something renders undefined.
  */
 function unwrap<T>(data: unknown, key?: string): T {
   if (key && data && typeof data === "object" && key in data) {
     return (data as Record<string, unknown>)[key] as T;
   }
 
-  // Try common alternative wrapping keys
-  const altKeys = ["data", "result"];
-  for (const altKey of altKeys) {
-    if (data && typeof data === "object" && altKey in data) {
-      return (data as Record<string, unknown>)[altKey] as T;
-    }
-  }
-
   return data as T;
 }
 
-/** Converts backend-v2 list envelopes to the shape used by the UI. */
+/**
+ * Converts the backend's list envelopes to the shape the UI works in.
+ *
+ * Every list endpoint answers `{ <resource>: [...], pagination: { page, limit,
+ * total } }` — except `GET /admin/venues`, which returns `{ venues }` with no
+ * pagination at all. Both land here as one `{ items, page, pageSize, total }`.
+ */
 function normalizeList<T>(data: T): T {
   if (!data || typeof data !== "object") return data;
 
@@ -120,59 +118,20 @@ function normalizeList<T>(data: T): T {
     "venues",
     "announcements",
     "users",
-    "bookings",
     "contacts",
   ].find((candidate) => Array.isArray(value[candidate]));
 
   if (!resourceKey) return data;
 
   const items = value[resourceKey] as unknown[];
-  const normalizedItems =
-    resourceKey === "bookings"
-      ? items.map((item) => {
-          const booking = item as Record<string, unknown>;
-          const user = (booking.user ?? {}) as Record<string, unknown>;
-          const event = (booking.event ?? null) as Record<
-            string,
-            unknown
-          > | null;
-          const amount = Number(booking.amountTotal ?? 0);
-
-          return {
-            ...booking,
-            kind: booking.kind ?? (booking.eventId ? "EVENT" : "ACCOMMODATION"),
-            qty: booking.qty ?? booking.quantity ?? 1,
-            amountSubtotal: Number(booking.amountSubtotal ?? 0),
-            amountFee: Number(booking.amountFee ?? 0),
-            amountTax: Number(booking.amountTax ?? 0),
-            amountTotal: amount,
-            currency: booking.currency ?? "INR",
-            user: {
-              id: user.id ?? 0,
-              name: user.name ?? "Unknown user",
-              email: user.email ?? "",
-            },
-            event: event
-              ? {
-                  id: event.id,
-                  heading: event.heading,
-                  type: event.type,
-                }
-              : null,
-            accommodation: booking.accommodation ?? null,
-          };
-        })
-      : items;
   const pagination = value.pagination as Record<string, unknown> | undefined;
-  const page = Number(pagination?.page ?? 1);
-  const pageSize = Number(pagination?.limit ?? items.length);
-  const total = Number(pagination?.total ?? items.length);
 
   return {
-    items: normalizedItems,
-    page,
-    pageSize,
-    total,
+    items,
+    page: Number(pagination?.page ?? 1),
+    // The backend calls it `limit`; the UI calls it `pageSize`.
+    pageSize: Number(pagination?.limit ?? items.length),
+    total: Number(pagination?.total ?? items.length),
   } as T;
 }
 
@@ -209,4 +168,26 @@ export async function patch<T>(
  */
 export async function del(path: string): Promise<void> {
   await api.delete(path);
+}
+
+/**
+ * `multipart/form-data` POST, for `POST /api/upload` — the only place a binary
+ * enters this API.
+ *
+ * Content-Type is deliberately unset: the browser has to write it itself so it
+ * can add the multipart boundary. Setting it by hand produces a body the
+ * server cannot parse.
+ */
+export async function postForm<T>(
+  path: string,
+  form: FormData,
+  key?: string,
+): Promise<T> {
+  const res = await api.post(path, form, {
+    headers: { "Content-Type": undefined },
+    // Images take longer than the 15s JSON default: they are resized and
+    // recompressed server-side before R2 sees them.
+    timeout: 60_000,
+  });
+  return unwrap<T>(res.data, key);
 }

@@ -6,7 +6,7 @@ import { useCallback, useState } from "react";
 import BulkActionBar from "@/components/common/BulkActionBar";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import SearchInput from "@/components/common/SearchInput";
-import { PublishedBadge } from "@/components/common/StatusBadge";
+import { PublishedBadge, TiqrBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
@@ -14,11 +14,11 @@ import { useCsvExport } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
-import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatInr, rupeeInput } from "@/lib/format";
 import { eventTypeLabel } from "@/lib/labels";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import { EVENT_TYPES, ORDERS, type AdminEvent } from "@/types";
+import { EVENT_TYPES, ORDERS, type AdminEvent, type TiqrSync } from "@/types";
 
 import EventFormModal from "./EventFormModal";
 import EventRowActions from "./EventRowActions";
@@ -42,7 +42,8 @@ const EXPORT_HEADERS = [
   "Starts",
   "Ends",
   "Price (INR)",
-  "Capacity",
+  "Tickets remaining",
+  "TIQR ticket",
   "Venue",
   "Committee",
   "Team event",
@@ -58,8 +59,9 @@ const toExportRow = (event: AdminEvent) => [
     ? formatDateTime(event.startTime ?? event.datetime)
     : "",
   event.endTime ? formatDateTime(event.endTime) : "",
-  paiseToRupeeInput(event.price),
-  event.capacity ?? "",
+  rupeeInput(event.price),
+  event.ticketsRemaining,
+  event.ticketId || "Not synced",
   event.venue?.name ?? "",
   event.committee ?? "",
   event.isTeamEvent ? "Yes" : "No",
@@ -73,11 +75,16 @@ export default function EventsList({
 }: EventsListProps) {
   const searchParams = useSearchParams();
 
+  /*
+   * `GET /admin/events` takes `type`, `published`, `archived` and paging — no
+   * `search`. Sending one anyway would be silently dropped and the box would
+   * appear to match everything, so the text filter runs over the loaded page
+   * instead (see `visibleRows` below).
+   */
   const events = useList<AdminEvent>(({ page, pageSize, filters }) =>
     listEvents({
       page,
       pageSize,
-      search: asText(filters.search),
       type: asEnum(filters.type, EVENT_TYPES),
       published: asBool(filters.published),
       sort: asText(filters.sort),
@@ -139,7 +146,6 @@ export default function EventsList({
   }, []);
 
   const activeQuery = {
-    search: asText(events.filters.search),
     type: asEnum(events.filters.type, EVENT_TYPES),
     published: asBool(events.filters.published),
     sort: asText(events.filters.sort),
@@ -154,8 +160,25 @@ export default function EventsList({
     filename: "events",
   });
 
+  const term = (events.filters.search ?? "").trim().toLowerCase();
+  const visibleRows = term
+    ? events.items.filter((event) =>
+        [event.heading, event.type, event.committee, event.venue?.name]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(term),
+      )
+    : events.items;
+
   const targets = events.items.filter((event) => selected.has(event.id));
 
+  /**
+   * `call` may resolve and still not have fully succeeded: publishing pushes
+   * the event to TIQR best-effort, and a failed push reports itself in the
+   * body rather than as a rejection. Those count as failures here — the event
+   * is live and unbookable, which is exactly what an admin needs told.
+   */
   async function runBulk(
     action: string,
     call: (id: number) => Promise<unknown>,
@@ -168,11 +191,25 @@ export default function EventsList({
 
     const results = await Promise.allSettled(ids.map((id) => call(id)));
 
-    const failures = results.flatMap((result, index) =>
-      result.status === "rejected"
-        ? [{ id: ids[index], message: apiErrorMessage(toApiError(result.reason)) }]
-        : [],
-    );
+    const failures = results.flatMap((result, index) => {
+      if (result.status === "rejected") {
+        return [
+          { id: ids[index], message: apiErrorMessage(toApiError(result.reason)) },
+        ];
+      }
+
+      const sync = (result.value as { tiqrSync?: TiqrSync } | undefined)?.tiqrSync;
+      if (sync && !sync.ok) {
+        return [
+          {
+            id: ids[index],
+            message: `Published, but the TIQR sync failed (${sync.error}). Re-sync from the row menu — it is unbookable until then.`,
+          },
+        ];
+      }
+
+      return [];
+    });
 
     setBusy(false);
     setSelected(new Set());
@@ -224,12 +261,23 @@ export default function EventsList({
       cell: (event) => formatInr(event.price),
     },
     {
-      key: "capacity",
-      header: "Capacity",
+      key: "ticketsRemaining",
+      header: "Left",
       align: "right",
-      className: "numeric w-24 text-muted-foreground",
+      className: "numeric w-20 text-muted-foreground",
       hideOnMobile: true,
-      cell: (event) => event.capacity ?? "—",
+      // Local bookkeeping: TIQR never writes back to it, so it is a planning
+      // figure rather than live availability.
+      cell: (event) => event.ticketsRemaining,
+    },
+    {
+      key: "tiqr",
+      header: "TIQR",
+      className: "w-28",
+      // A published event with no ticket id is live on the public site and
+      // 409s on every booking attempt. Worth a column of its own.
+      cell: (event) =>
+        event.published ? <TiqrBadge ticketId={event.ticketId} /> : "—",
     },
     {
       key: "createdAt",
@@ -269,7 +317,7 @@ export default function EventsList({
         <SearchInput
           value={events.filters.search ?? ""}
           onChange={(value) => events.setFilter("search", value)}
-          placeholder="Search events…"
+          placeholder="Filter this page…"
         />
 
         <div className="flex gap-2">
@@ -341,7 +389,7 @@ export default function EventsList({
 
       <DataTable
         columns={columns}
-        rows={events.items}
+        rows={visibleRows}
         rowKey={(event) => event.id}
         loading={events.loading}
         error={events.error}

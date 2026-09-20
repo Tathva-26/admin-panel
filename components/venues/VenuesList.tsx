@@ -7,14 +7,13 @@ import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
 import SearchInput from "@/components/common/SearchInput";
 import Button from "@/components/ui/Button";
-import Pagination from "@/components/ui/Pagination";
 import { useApi } from "@/hooks/useApi";
 import { useList } from "@/hooks/useList";
 import { useMutation } from "@/hooks/useMutation";
 import { useNow } from "@/hooks/useNow";
 import { listEvents } from "@/lib/api/events";
 import { deleteVenue, listVenues } from "@/lib/api/venues";
-import { asText } from "@/lib/params";
+
 import { groupByVenue } from "@/lib/schedule";
 import type { AdminEvent, Venue } from "@/types";
 
@@ -33,13 +32,12 @@ import VenueScheduleModal from "./VenueScheduleModal";
 const SCHEDULE_PAGE_SIZE = 100;
 
 export default function VenuesList() {
-  const venues = useList<Venue>(({ page, pageSize, filters }) =>
-    listVenues({
-      page,
-      pageSize,
-      search: asText(filters.search),
-    }),
-  );
+  /*
+   * `GET /admin/venues` takes no query params at all — it returns every venue
+   * in one `{ venues }` body, so there is nothing to page and the text filter
+   * runs over the loaded rows.
+   */
+  const venues = useList<Venue>(() => listVenues());
 
   const setVenueFilter = venues.setFilter;
 
@@ -53,6 +51,13 @@ export default function VenuesList() {
     () => groupByVenue(schedule.data?.items ?? []),
     [schedule.data],
   );
+
+  const term = (venues.filters.search ?? "").trim().toLowerCase();
+  const visibleRows = term
+    ? venues.items.filter((venue) =>
+        `${venue.name} ${venue.location ?? ""}`.toLowerCase().includes(term),
+      )
+    : venues.items;
 
   const searchParams = useSearchParams();
   const [editing, setEditing] = useState<Venue | null>(null);
@@ -175,7 +180,7 @@ export default function VenuesList() {
         <SearchInput
           value={venues.filters.search ?? ""}
           onChange={(value) => venues.setFilter("search", value)}
-          placeholder="Search venues…"
+          placeholder="Filter venues…"
         />
       </div>
 
@@ -200,7 +205,7 @@ export default function VenuesList() {
 
       <DataTable
         columns={columns}
-        rows={venues.items}
+        rows={visibleRows}
         rowKey={(venue) => venue.id}
         loading={venues.loading}
         error={venues.error}
@@ -212,14 +217,16 @@ export default function VenuesList() {
             New venue
           </Button>
         }
+        // No pager: the endpoint returns every venue in one response, so
+        // there is never a second page to go to.
         footer={
-          <Pagination
-            page={venues.page}
-            pageSize={venues.pageSize}
-            total={venues.total}
-            totalPages={venues.totalPages}
-            onPageChange={venues.setPage}
-          />
+          <p className="numeric border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
+            {visibleRows.length}
+            {visibleRows.length === venues.items.length
+              ? ""
+              : ` of ${venues.items.length}`}{" "}
+            venues
+          </p>
         }
       />
 

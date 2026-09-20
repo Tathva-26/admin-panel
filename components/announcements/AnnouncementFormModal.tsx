@@ -14,6 +14,8 @@ import { apiErrorMessage } from "@/lib/api/errors";
 import {
   createAnnouncement,
   getAnnouncement,
+  publishAnnouncement,
+  unpublishAnnouncement,
   updateAnnouncement,
 } from "@/lib/api/announcements";
 import type { Announcement, AnnouncementInput } from "@/types";
@@ -30,7 +32,6 @@ function blankForm(): AnnouncementInput {
   return {
     title: "",
     content: "",
-    published: false,
   };
 }
 
@@ -38,7 +39,6 @@ function announcementToForm(a: Announcement): AnnouncementInput {
   return {
     title: a.title,
     content: a.content,
-    published: a.published,
   };
 }
 
@@ -57,6 +57,14 @@ function AnnouncementFormDialog({
     announcement ? announcementToForm(announcement) : blankForm(),
   );
 
+  /*
+   * Published state is not part of the create/update body — the backend's
+   * schema is `{ title, content }` and strips anything else, so a `published`
+   * flag sent here would be silently dropped. It has its own endpoints, so the
+   * checkbox is tracked separately and applied as a second call.
+   */
+  const [published, setPublished] = useState(announcement?.published ?? false);
+
   const create = useMutation((body: AnnouncementInput) =>
     createAnnouncement(body),
   );
@@ -72,6 +80,16 @@ function AnnouncementFormDialog({
     value: AnnouncementInput[K],
   ) => setForm((prev) => ({ ...prev, [key]: value }));
 
+  /**
+   * Publishing is a separate endpoint, and deliberately not fatal: the
+   * announcement has already been saved by the time it runs, so a failure here
+   * surfaces as the mutation's error rather than discarding the write.
+   */
+  async function applyPublished(id: number, next: boolean) {
+    if (next) await publishAnnouncement(id);
+    else await unpublishAnnouncement(id);
+  }
+
   async function handleSubmit() {
     if (isEdit && announcement) {
       const original = announcementToForm(announcement);
@@ -82,19 +100,30 @@ function AnnouncementFormDialog({
         }
       });
 
-      if (Object.keys(changed).length === 0) {
+      const publishedChanged = published !== announcement.published;
+
+      if (Object.keys(changed).length === 0 && !publishedChanged) {
         onClose();
         return;
       }
 
-      const result = await update.run(announcement.id, changed);
+      const result =
+        Object.keys(changed).length === 0
+          ? announcement
+          : await update.run(announcement.id, changed);
+
       if (result) {
+        if (publishedChanged) {
+          await applyPublished(announcement.id, published);
+        }
         onSaved();
         onClose();
       }
     } else {
       const result = await create.run(form);
       if (result) {
+        // Create always lands as a draft; publish it as a follow-up if asked.
+        if (published) await applyPublished(result.id, true);
         onSaved();
         onClose();
       }
@@ -167,8 +196,8 @@ function AnnouncementFormDialog({
           <input
             type="checkbox"
             id="announcement-published"
-            checked={form.published ?? false}
-            onChange={(e) => set("published", e.target.checked)}
+            checked={published}
+            onChange={(e) => setPublished(e.target.checked)}
             className="h-4 w-4 rounded border-input accent-primary"
           />
           <label

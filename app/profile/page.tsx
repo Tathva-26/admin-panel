@@ -32,8 +32,8 @@ export default function ProfilePage() {
     { label: 'Email', value: user.email },
     { label: 'Phone', value: user.phone || '—' },
     { label: 'College', value: user.college || '—' },
-    { label: 'District', value: user.district || '—' },
-    { label: 'Referral code', value: user.referralCode },
+    // District and referral code are deliberately absent: GET /admin/me does
+    // not select them, and a referral code belongs to a CA, not an admin.
     { label: 'Joined', value: formatDateTime(user.createdAt) },
   ]
 

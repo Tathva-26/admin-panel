@@ -5,12 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";
 import { listAnnouncements } from "@/lib/api/announcements";
-import { listBookings } from "@/lib/api/bookings";
 import { listEvents } from "@/lib/api/events";
 import { listUsers } from "@/lib/api/users";
 import { listVenues } from "@/lib/api/venues";
-import { formatInr } from "@/lib/format";
-import { bookingStatusLabel, eventTypeLabel } from "@/lib/labels";
+import { eventTypeLabel } from "@/lib/labels";
 import { NAV_ITEMS } from "@/lib/nav";
 
 interface PaletteItem {
@@ -26,6 +24,13 @@ const MIN_SEARCH_LENGTH = 2;
 
 /** Per resource. Enough to find the thing, few enough to still scan the list. */
 const MAX_PER_GROUP = 4;
+
+/**
+ * How many rows to pull for the resources whose list endpoints have no
+ * `search` param, so the filtering below has something to work over. A fest
+ * has tens of events and venues, not thousands.
+ */
+const SCAN_SIZE = 200;
 const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -113,9 +118,13 @@ export default function CommandPalette({
    * anything", and typing a person's name finding nothing is worse than not
    * offering it.
    *
-   * allSettled, so one failing endpoint (bookings, say, before its routes
-   * exist) still lets the others return. The palette is a convenience; it
-   * degrades rather than erroring.
+   * allSettled, so one failing endpoint still lets the others return. The
+   * palette is a convenience; it degrades rather than erroring.
+   *
+   * Only `/admin/users` takes a `search` param — the other list endpoints
+   * ignore unknown query keys and would happily return their whole first page
+   * for any term. So those are fetched wide and filtered here, which is honest
+   * about being a shortcut over loaded rows rather than a server search.
    */
   useEffect(() => {
     if (!open) return;
@@ -134,21 +143,25 @@ export default function CommandPalette({
 
       if (active) setSearching(true);
 
-      const [events, users, venues, announcements, bookings] =
-        await Promise.allSettled([
-          listEvents({ search: term, pageSize: MAX_PER_GROUP }),
-          listUsers({ search: term, pageSize: MAX_PER_GROUP }),
-          listVenues({ search: term, pageSize: MAX_PER_GROUP }),
-          listAnnouncements({ search: term, pageSize: MAX_PER_GROUP }),
-          listBookings({ search: term, pageSize: MAX_PER_GROUP }),
-        ]);
+      const [events, users, venues, announcements] = await Promise.allSettled([
+        listEvents({ pageSize: SCAN_SIZE }),
+        listUsers({ search: term, pageSize: MAX_PER_GROUP }),
+        listVenues({ pageSize: SCAN_SIZE }),
+        listAnnouncements({ pageSize: SCAN_SIZE }),
+      ]);
 
       if (!active) return;
+
+      const needle = term.toLowerCase();
+      const matches = (...fields: (string | null | undefined)[]) =>
+        fields.some((field) => field?.toLowerCase().includes(needle));
 
       const next: PaletteItem[] = [];
 
       if (events.status === "fulfilled") {
-        for (const event of events.value.items) {
+        for (const event of events.value.items
+          .filter((event) => matches(event.heading, event.type, event.committee))
+          .slice(0, MAX_PER_GROUP)) {
           next.push({
             id: `event:${event.id}`,
             label: event.heading,
@@ -172,14 +185,13 @@ export default function CommandPalette({
       }
 
       if (venues.status === "fulfilled") {
-        for (const venue of venues.value.items) {
+        for (const venue of venues.value.items
+          .filter((venue) => matches(venue.name, venue.location))
+          .slice(0, MAX_PER_GROUP)) {
           next.push({
             id: `venue:${venue.id}`,
             label: venue.name,
-            hint:
-              "address" in venue && typeof venue.address === "string"
-                ? venue.address
-                : undefined,
+            hint: venue.location ?? undefined,
             group: "Venues",
             href: `/venues?search=${encodeURIComponent(venue.name)}`,
           });
@@ -187,31 +199,17 @@ export default function CommandPalette({
       }
 
       if (announcements.status === "fulfilled") {
-        for (const announcement of announcements.value.items) {
+        for (const announcement of announcements.value.items
+          .filter((announcement) =>
+            matches(announcement.title, announcement.content),
+          )
+          .slice(0, MAX_PER_GROUP)) {
           next.push({
             id: `announcement:${announcement.id}`,
             label: announcement.title,
             hint: announcement.published ? "Published" : "Draft",
             group: "Announcements",
             href: `/announcements?search=${encodeURIComponent(announcement.title)}`,
-          });
-        }
-      }
-
-      if (bookings.status === "fulfilled") {
-        for (const booking of bookings.value.items) {
-          next.push({
-            id: `booking:${booking.bookingUid}`,
-            label: booking.bookingUid,
-            hint: [
-              booking.user?.name,
-              formatInr(booking.amountTotal),
-              bookingStatusLabel(booking.status),
-            ]
-              .filter(Boolean)
-              .join(" · "),
-            group: "Bookings",
-            href: `/bookings?search=${encodeURIComponent(booking.bookingUid)}`,
           });
         }
       }
@@ -276,7 +274,7 @@ export default function CommandPalette({
     emptyMessage = "Searching…";
   } else if (query.trim().length < MIN_SEARCH_LENGTH) {
     emptyMessage =
-      "Type to search events, people, venues, announcements and bookings.";
+      "Type to search events, people, venues and announcements.";
   } else {
     emptyMessage = `Nothing matches “${query}”.`;
   }
@@ -307,7 +305,7 @@ export default function CommandPalette({
             setActiveIndex(0);
           }}
           onKeyDown={onInputKeyDown}
-          placeholder="Search events, people, venues, bookings…"
+          placeholder="Search events, people, venues…"
           className="w-full shrink-0 border-b border-border px-4 py-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
         />
 

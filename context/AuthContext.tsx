@@ -14,10 +14,10 @@ import { getMe } from "@/lib/api/auth";
 import { signOut, useSession } from "@/lib/auth-client";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 
-import type { AdminUser } from "@/types";
+import type { AdminMe } from "@/types";
 
 interface AuthContextType {
-  user: AdminUser | null;
+  user: AdminMe | null;
   loading: boolean;
   error: ApiError | null;
   isUnauthorized: boolean;
@@ -34,7 +34,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
  */
 interface ProfileState {
   forId: string;
-  user: AdminUser | null;
+  user: AdminMe | null;
   isUnauthorized: boolean;
   error: ApiError | null;
 }

@@ -11,20 +11,21 @@ import Modal from '@/components/ui/Modal'
 import Spinner from '@/components/ui/Spinner'
 import { useApi } from '@/hooks/useApi'
 import { useMutation } from '@/hooks/useMutation'
-import { apiErrorMessage } from '@/lib/api/errors'
+import { apiErrorMessage, toApiError } from '@/lib/api/errors'
 import {
   archiveEvent,
   createEvent,
   getEvent,
   updateEvent,
 } from '@/lib/api/events'
+import { uploadImage } from '@/lib/api/upload'
 import { listVenues } from '@/lib/api/venues'
 import {
   dateTimeInputToIso,
   isoToDateInput,
   isoToTimeInput,
-  paiseToRupeeInput,
-  rupeeInputToPaise,
+  parseRupees,
+  rupeeInput,
 } from '@/lib/format'
 import {
   EVENT_TYPES,
@@ -53,13 +54,11 @@ function blankForm(): EventInput {
     startTime: null,
     endTime: null,
     price: 0,
-    ticketId: null,
     venueId: null,
     committee: '',
     isTeamEvent: false,
     teamSize: null,
-    capacity: null,
-    published: false,
+    ticketsRemaining: 999,
   }
 }
 
@@ -74,13 +73,11 @@ function eventToForm(event: AdminEvent): EventInput {
     startTime: event.startTime,
     endTime: event.endTime,
     price: event.price,
-    ticketId: event.ticketId ?? null,
-    venueId: event.venue?.id ?? null,
+    venueId: event.venueId ?? event.venue?.id ?? null,
     committee: event.committee ?? '',
     isTeamEvent: event.isTeamEvent,
     teamSize: event.teamSize,
-    capacity: event.capacity,
-    published: event.published,
+    ticketsRemaining: event.ticketsRemaining,
   }
 }
 
@@ -99,8 +96,10 @@ function EventFormDialog({
     event ? eventToForm(event) : blankForm(),
   )
   const [priceInput, setPriceInput] = useState(() =>
-    event ? paiseToRupeeInput(event.price) : '0.00',
+    event ? rupeeInput(event.price) : '0',
   )
+  const [priceError, setPriceError] = useState<string | null>(null)
+  const [dateError, setDateError] = useState<string | null>(null)
 
   const [dateInput, setDateInput] = useState(() =>
     isoToDateInput(event?.startTime ?? event?.datetime),
@@ -115,6 +114,39 @@ function EventFormDialog({
   const [archiveOpen, setArchiveOpen] = useState(false)
 
   const venues = useApi<ListResponse<Venue>>('venues:all', listVenues)
+
+  /*
+   * `POST /api/upload` is admin-only, multipart, and expects the file under
+   * `image` — not `file` — with the session cookie attached. It answers with a
+   * `.webp` URL whatever went in, and that URL is what the event stores.
+   */
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function handlePictureFile(file: File | undefined) {
+    if (!file) return
+
+    if (file.type === 'image/svg+xml') {
+      setUploadError('SVG is not accepted. Use a PNG, JPG or WEBP.')
+      return
+    }
+
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const result = await uploadImage(file, 'events')
+      set('picture', result.url)
+    } catch (err) {
+      const error = toApiError(err)
+      setUploadError(
+        error.status === 413
+          ? 'That image is over the 2 MB upload limit. Try a smaller file.'
+          : apiErrorMessage(error),
+      )
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const create = useMutation((body: EventInput) => createEvent(body))
   const update = useMutation((id: number, body: Partial<EventInput>) =>
@@ -135,8 +167,11 @@ function EventFormDialog({
 
   function handlePriceChange(value: string) {
     setPriceInput(value)
-    const paise = rupeeInputToPaise(value)
-    if (paise !== null) set('price', paise)
+    const rupees = parseRupees(value)
+    if (rupees !== null) {
+      set('price', rupees)
+      setPriceError(null)
+    }
   }
 
   function handleDateChange(newDate: string) {
@@ -185,8 +220,12 @@ function EventFormDialog({
   }
 
   async function handleSubmit() {
-    const paise = rupeeInputToPaise(priceInput)
-    if (paise === null) return
+    const rupees = parseRupees(priceInput)
+    if (rupees === null) {
+      setPriceError('Enter a whole number of rupees, e.g. 499.')
+      return
+    }
+    setPriceError(null)
 
     const startIso =
       dateInput && startTimeInput
@@ -199,12 +238,24 @@ function EventFormDialog({
     const datetimeIso =
       startIso ?? (dateInput ? dateTimeInputToIso(`${dateInput}T00:00`) : null)
 
+    // `datetime` is required on create — the backend's schema is a plain
+    // `z.coerce.date()`, so omitting it comes back as a Zod 400 with nothing
+    // pointing at the date field.
+    if (!isEdit && !datetimeIso) {
+      setDateError('Pick a date.')
+      return
+    }
+    setDateError(null)
+
     const body: EventInput = {
       ...form,
-      price: paise,
+      price: rupees,
       datetime: datetimeIso,
       startTime: startIso,
       endTime: endIso,
+      // An empty string fails the backend's `.url()` check; absent is what
+      // "no picture" means.
+      picture: form.picture ? form.picture : null,
     }
 
     if (!body.isTeamEvent) {
@@ -298,6 +349,19 @@ function EventFormDialog({
           </p>
         ) : null}
 
+        {/*
+          TIQR documents no event-update endpoint, so once an event has been
+          synced, changes made here never reach it — and re-syncing will not
+          push them either. The admin has to know that before editing a price.
+        */}
+        {isEdit && event?.tiqrEventId ? (
+          <p className='mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800'>
+            This event is already on TIQR (#{event.tiqrEventId}). Edits here
+            will <strong>not</strong> reach TIQR — the price and heading buyers
+            see at checkout stay as they were.
+          </p>
+        ) : null}
+
         <div className='space-y-4'>
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-2'>
             <Field label='Heading' error={fields.heading} required>
@@ -367,7 +431,7 @@ function EventFormDialog({
                     'bg-blue-50',
                   )
                 }}
-                onDrop={async (e) => {
+                onDrop={(e) => {
                   e.preventDefault()
                   e.currentTarget.classList.remove(
                     'border-blue-500',
@@ -375,26 +439,9 @@ function EventFormDialog({
                   )
 
                   const file = e.dataTransfer.files?.[0]
+                  if (!file || !file.type.startsWith('image/')) return
 
-                  if (!file || !file.type.startsWith('image/')) {
-                    return
-                  }
-
-                  // Upload the image here
-                  const formData = new FormData()
-                  formData.append('file', file)
-
-                  const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                  })
-
-                  if (!res.ok) {
-                    return
-                  }
-
-                  const data = await res.json()
-                  set('picture', data.url)
+                  void handlePictureFile(file)
                 }}
                 className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
                 onClick={() =>
@@ -406,28 +453,23 @@ function EventFormDialog({
                   type='file'
                   accept='image/*'
                   className='hidden'
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-
-                    if (!file) return
-
-                    const formData = new FormData()
-                    formData.append('file', file)
-
-                    const res = await fetch('/api/upload', {
-                      method: 'POST',
-                      body: formData,
-                    })
-
-                    if (!res.ok) return
-
-                    const data = await res.json()
-                    set('picture', data.url)
+                  onChange={(e) => {
+                    void handlePictureFile(e.target.files?.[0])
+                    // Reset so picking the same file twice still fires change.
+                    e.target.value = ''
                   }}
                 />
 
-                {form.picture ? (
+                {uploading ? (
+                  <div className='flex flex-col items-center gap-2'>
+                    <Spinner className='h-6 w-6 text-zinc-900' />
+                    <p className='text-xs text-zinc-500'>Uploading…</p>
+                  </div>
+                ) : form.picture ? (
                   <div className='space-y-3'>
+                    {/* next/image needs every remote host declared up front in
+                        remotePatterns; this one comes from R2 at runtime. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={form.picture}
                       alt='Preview'
@@ -445,15 +487,21 @@ function EventFormDialog({
                     <p className='mt-1 text-xs text-zinc-500'>
                       or click to browse
                     </p>
-                    <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
+                    <p className='mt-2 text-xs text-zinc-400'>
+                      PNG, JPG, WEBP or AVIF, up to 2&nbsp;MB. Stored as WEBP.
+                    </p>
                   </>
                 )}
+
+                {uploadError ? (
+                  <p className='mt-2 text-xs text-red-600'>{uploadError}</p>
+                ) : null}
               </div>
             )}
           </Field>
 
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
-            <Field label='Date' error={fields.datetime}>
+            <Field label='Date' error={dateError ?? fields.datetime} required>
               {(props) => (
                 <Input
                   {...props}
@@ -490,35 +538,39 @@ function EventFormDialog({
           <div className='grid grid-cols-1 gap-4 sm:grid-cols-3'>
             <Field
               label='Price (₹)'
-              error={fields.price}
-              hint='Enter in Rupees; stored as paise.'
+              error={priceError ?? fields.price}
+              hint='Whole rupees. Converted to paise for TIQR.'
             >
               {(props) => (
                 <Input
                   {...props}
                   type='text'
-                  inputMode='decimal'
+                  inputMode='numeric'
                   value={priceInput}
                   onChange={(e) => handlePriceChange(e.target.value)}
-                  placeholder='499.00'
+                  placeholder='499'
                 />
               )}
             </Field>
 
-            <Field label='Capacity' error={fields.capacity}>
+            <Field
+              label='Tickets remaining'
+              error={fields.ticketsRemaining}
+              hint='Ours, not TIQR’s — it never writes back to this.'
+            >
               {(props) => (
                 <Input
                   {...props}
                   type='number'
                   min={0}
-                  value={form.capacity ?? ''}
+                  value={form.ticketsRemaining ?? ''}
                   onChange={(e) =>
                     set(
-                      'capacity',
-                      e.target.value ? Number(e.target.value) : null,
+                      'ticketsRemaining',
+                      e.target.value ? Number(e.target.value) : undefined,
                     )
                   }
-                  placeholder='100'
+                  placeholder='999'
                 />
               )}
             </Field>

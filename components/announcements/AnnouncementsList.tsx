@@ -33,11 +33,15 @@ interface BulkOutcome {
 }
 
 export default function AnnouncementsList() {
+  /*
+   * `GET /admin/announcements` takes `published` and paging only. A `search`
+   * param would be stripped server-side and the box would appear to match
+   * everything, so the text filter runs over the loaded page instead.
+   */
   const announcements = useList<Announcement>(({ page, pageSize, filters }) =>
     listAnnouncements({
       page,
       pageSize,
-      search: asText(filters.search),
       published: asBool(filters.published),
       sort: asText(filters.sort),
       order: asEnum(filters.order, ORDERS),
@@ -53,6 +57,13 @@ export default function AnnouncementsList() {
   // Title/content are truncated in the table row; tapping opens this so the
   // full text is still reachable, on mobile as much as desktop.
   const [viewing, setViewing] = useState<Announcement | null>(null);
+
+  const term = (announcements.filters.search ?? "").trim().toLowerCase();
+  const visibleRows = term
+    ? announcements.items.filter((a) =>
+        `${a.title} ${a.content}`.toLowerCase().includes(term),
+      )
+    : announcements.items;
 
   const searchParams = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
@@ -235,7 +246,7 @@ const columns: Column<Announcement>[] = [
 
       <DataTable
         columns={columns}
-        rows={announcements.items}
+        rows={visibleRows}
         rowKey={(a) => a.id}
         loading={announcements.loading}
         error={announcements.error}

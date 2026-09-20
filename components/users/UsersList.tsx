@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import Avatar from "@/components/common/Avatar";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column } from "@/components/common/DataTable";
 import DistributionBar, { type Segment } from "@/components/common/DistributionBar";
 import SearchInput from "@/components/common/SearchInput";
@@ -12,11 +13,13 @@ import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useCsvExport, type CsvCell } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
-import { listUsers } from "@/lib/api/users";
+import { useMutation } from "@/hooks/useMutation";
+import { listUsers, updateUserRole } from "@/lib/api/users";
+import { apiErrorMessage } from "@/lib/api/errors";
 import { formatDate } from "@/lib/format";
 import { roleLabel } from "@/lib/labels";
 import { asEnum, asText } from "@/lib/params";
-import { ORDERS, ROLES, type AdminUser } from "@/types";
+import { ORDERS, ROLES, type AdminUser, type Role } from "@/types";
 
 const EXPORT_HEADERS = [
   "ID",
@@ -25,6 +28,10 @@ const EXPORT_HEADERS = [
   "Phone",
   "College",
   "District",
+  "State",
+  "Branch",
+  "Semester",
+  "Year",
   "Referral code",
   "Role",
   "Joined",
@@ -38,7 +45,12 @@ const toExportRow = (user: AdminUser): CsvCell[] => [
   user.phone ?? "",
   user.college ?? "",
   user.district ?? "",
-  user.referralCode,
+  user.state ?? "",
+  user.branch ?? "",
+  user.semester ?? "",
+  user.year ?? "",
+  // Null for everyone but a CA with a complete profile — TIQR issues it.
+  user.referralCode ?? "",
   user.role,
   formatDate(user.createdAt),
 ];
@@ -75,11 +87,24 @@ export default function UsersList() {
 
   const roleSplit: Segment[] = useMemo(() => {
     const admins = users.items.filter((user) => user.role === "ADMIN").length;
+    const cas = users.items.filter((user) => user.role === "CA").length;
     return [
       { label: "Admins", value: admins, tone: "blue" },
-      { label: "Users", value: users.items.length - admins, tone: "neutral" },
+      { label: "CAs", value: cas, tone: "amber" },
+      {
+        label: "Users",
+        value: users.items.length - admins - cas,
+        tone: "neutral",
+      },
     ];
   }, [users.items]);
+
+  const [pending, setPending] = useState<{ user: AdminUser; role: Role } | null>(
+    null,
+  );
+  const changeRole = useMutation((id: string, role: Role) =>
+    updateUserRole(id, role),
+  );
 
   const columns: Column<AdminUser>[] = [
     {
@@ -120,13 +145,38 @@ export default function UsersList() {
       key: "referralCode",
       header: "Referral code",
       className: "numeric w-28 text-muted-foreground",
-      cell: (user) => user.referralCode,
+      // TIQR issues this, and only once a CA with a complete profile first
+      // asks for it — so a blank here is normal, not missing data.
+      cell: (user) => user.referralCode ?? "—",
     },
     {
       key: "role",
       header: "Role",
       className: "w-24",
       cell: (user) => <RoleBadge role={user.role} />,
+    },
+    {
+      key: "roleActions",
+      header: "",
+      className: "w-36",
+      isActions: true,
+      cell: (user) => (
+        <Select
+          aria-label={`Role for ${user.name}`}
+          className="h-7 w-32 text-xs"
+          value={user.role}
+          // A CA cannot be demoted — the backend rejects it with a 400 — so
+          // the control is simply not offered rather than failing on use.
+          disabled={user.role === "CA" || changeRole.loading}
+          onChange={(e) => setPending({ user, role: e.target.value as Role })}
+        >
+          {ROLES.map((role) => (
+            <option key={role} value={role}>
+              {roleLabel(role)}
+            </option>
+          ))}
+        </Select>
+      ),
     },
     {
       key: "createdAt",
@@ -180,6 +230,11 @@ export default function UsersList() {
           Export failed. {csv.error.message}
         </p>
       ) : null}
+      {changeRole.error ? (
+        <p className="rounded-md border border-destructive bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {apiErrorMessage(changeRole.error)}
+        </p>
+      ) : null}
       {csv.truncated ? (
         <p className="rounded-md border border-warning/40 bg-warning/15 px-3 py-2 text-xs text-warning">
           Export stopped at 2000 rows. Narrow the filters to get the rest.
@@ -219,6 +274,34 @@ export default function UsersList() {
             onPageChange={users.setPage}
           />
         }
+      />
+
+      <ConfirmDialog
+        open={!!pending}
+        title="Change role"
+        description={
+          pending
+            ? pending.role === "CA"
+              ? `Make ${pending.user.name} a campus ambassador? This cannot be undone — a CA cannot be demoted. It does not create a referral code; TIQR issues one when they first ask for it.`
+              : `Change ${pending.user.name}'s role to ${roleLabel(pending.role)}?`
+            : undefined
+        }
+        confirmLabel="Change role"
+        destructive={pending?.role === "CA" || pending?.role === "ADMIN"}
+        loading={changeRole.loading}
+        error={changeRole.error}
+        onConfirm={async () => {
+          if (!pending) return;
+          const result = await changeRole.run(pending.user.id, pending.role);
+          if (result) {
+            setPending(null);
+            users.refetch();
+          }
+        }}
+        onCancel={() => {
+          changeRole.reset();
+          setPending(null);
+        }}
       />
     </div>
   );

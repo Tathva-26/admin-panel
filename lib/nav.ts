@@ -16,7 +16,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/",
     label: "Dashboard",
-    description: "Counts across events, announcements, users and bookings.",
+    description: "Counts across events, announcements, users and messages.",
   },
   {
     href: "/events",
@@ -38,10 +38,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Users",
     description: "Registered users and their roles.",
   },
+  /*
+   * No bookings section: TIQR is the system of record for them and this
+   * backend stores none, so there is nothing here to list (API.md §1).
+   */
   {
-    href: "/bookings",
-    label: "Bookings",
-    description: "Event and accommodation bookings, and their payment state.",
+    href: "/contact-messages",
+    label: "Messages",
+    description: "Enquiries submitted through the public contact form.",
   },
 ];
 

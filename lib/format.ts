@@ -3,7 +3,9 @@
  *
  * Two rules from the contract that are easy to get wrong and expensive to get
  * wrong quietly:
- *   - money is an integer number of paise, never a float of rupees
+ *   - `price` is an integer number of **rupees** (API.md §10). The backend
+ *     converts to paise itself when it pushes the event to TIQR — doing it
+ *     here too multiplies the price by a hundred.
  *   - datetimes go over the wire as ISO 8601, but admins think in IST
  */
 
@@ -13,36 +15,33 @@ const IST_TIME_ZONE = "Asia/Kolkata";
 /* Money                                                               */
 /* ------------------------------------------------------------------ */
 
-/** `49900` → `"₹499.00"`. */
-export function formatInr(paise: number): string {
+/** `499` → `"₹499"`. Whole rupees: the backend's price is an integer. */
+export function formatInr(rupees: number): string {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    minimumFractionDigits: 2,
-  }).format(paise / 100);
+    maximumFractionDigits: 0,
+  }).format(rupees);
 }
 
-/** `49900` → `"499.00"`, for putting into a text input. */
-export function paiseToRupeeInput(paise: number): string {
-  const sign = paise < 0 ? "-" : "";
-  const absolute = Math.abs(paise);
-  return `${sign}${Math.trunc(absolute / 100)}.${String(absolute % 100).padStart(2, "0")}`;
+/** `499` → `"499"`, for putting into a text input. */
+export function rupeeInput(rupees: number | null | undefined): string {
+  return rupees === null || rupees === undefined ? "" : String(rupees);
 }
 
 /**
- * `"499"` or `"499.5"` → `49950` paise, or `null` if it is not a valid amount.
+ * `"499"` → `499`, or `null` if it is not a whole, non-negative rupee amount.
  *
- * Deliberately string-based: `Math.round(parseFloat(v) * 100)` is the usual
- * shortcut and it drifts, because 4.99 * 100 is 498.99999999999994.
+ * Paise are rejected rather than rounded: the backend's schema is
+ * `z.number().int()`, so a decimal comes back as a 400 with a Zod issue, and
+ * silently rounding it would charge a price nobody typed.
  */
-export function rupeeInputToPaise(input: string): number | null {
+export function parseRupees(input: string): number | null {
   const trimmed = input.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
+  if (!/^\d+$/.test(trimmed)) return null;
 
-  const [whole, fraction = ""] = trimmed.split(".");
-  const paise = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-
-  return Number.isSafeInteger(paise) ? paise : null;
+  const rupees = Number(trimmed);
+  return Number.isSafeInteger(rupees) ? rupees : null;
 }
 
 /* ------------------------------------------------------------------ */
