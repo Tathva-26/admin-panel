@@ -23,8 +23,8 @@ import {
   dateTimeInputToIso,
   isoToDateInput,
   isoToTimeInput,
-  paiseToRupeeInput,
-  rupeeInputToPaise,
+  parseRupeeInput,
+  rupeeInputValue,
 } from '@/lib/format'
 import {
   EVENT_TYPES,
@@ -101,7 +101,7 @@ function EventFormDialog({
     event ? eventToForm(event) : blankForm(),
   )
   const [priceInput, setPriceInput] = useState(() =>
-    event ? paiseToRupeeInput(event.price) : '0.00',
+    event ? rupeeInputValue(event.price) : '0',
   )
 
   const [dateInput, setDateInput] = useState(() =>
@@ -166,8 +166,8 @@ function EventFormDialog({
 
   function handlePriceChange(value: string) {
     setPriceInput(value)
-    const paise = rupeeInputToPaise(value)
-    if (paise !== null) set('price', paise)
+    const rupees = parseRupeeInput(value)
+    if (rupees !== null) set('price', rupees)
   }
 
   function handleDateChange(newDate: string) {
@@ -216,8 +216,9 @@ function EventFormDialog({
   }
 
   async function handleSubmit() {
-    const paise = rupeeInputToPaise(priceInput)
-    if (paise === null) return
+    // Event.price is whole rupees; the backend converts to paise for TIQR.
+    const rupees = parseRupeeInput(priceInput)
+    if (rupees === null) return
 
     const startIso =
       dateInput && startTimeInput
@@ -232,7 +233,7 @@ function EventFormDialog({
 
     const body: EventInput = {
       ...form,
-      price: paise,
+      price: rupees,
       datetime: datetimeIso,
       startTime: startIso,
       endTime: endIso,
@@ -494,16 +495,16 @@ function EventFormDialog({
             <Field
               label='Price (₹)'
               error={fields.price}
-              hint='Enter in Rupees; stored as paise.'
+              hint='Whole rupees.'
             >
               {(props) => (
                 <Input
                   {...props}
                   type='text'
-                  inputMode='decimal'
+                  inputMode='numeric'
                   value={priceInput}
                   onChange={(e) => handlePriceChange(e.target.value)}
-                  placeholder='499.00'
+                  placeholder='499'
                 />
               )}
             </Field>

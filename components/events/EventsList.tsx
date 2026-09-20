@@ -14,7 +14,7 @@ import { useCsvExport } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
 import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
-import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
+import { formatDate, formatDateTime, formatRupees, rupeeInputValue } from "@/lib/format";
 import { eventTypeLabel } from "@/lib/labels";
 import { asBool, asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
@@ -58,7 +58,7 @@ const toExportRow = (event: AdminEvent) => [
     ? formatDateTime(event.startTime ?? event.datetime)
     : "",
   event.endTime ? formatDateTime(event.endTime) : "",
-  paiseToRupeeInput(event.price),
+  rupeeInputValue(event.price),
   event.capacity ?? "",
   event.venue?.name ?? "",
   event.committee ?? "",
@@ -221,7 +221,7 @@ export default function EventsList({
       header: "Price",
       align: "right",
       className: "numeric w-28",
-      cell: (event) => formatInr(event.price),
+      cell: (event) => formatRupees(event.price),
     },
     {
       key: "capacity",

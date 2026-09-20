@@ -13,6 +13,49 @@ const IST_TIME_ZONE = "Asia/Kolkata";
 /* Money                                                               */
 /* ------------------------------------------------------------------ */
 
+/*
+ * Two different units live in this API, and mixing them charges people the
+ * wrong amount:
+ *
+ *   Booking.amount*  integer PAISE — passed through from TIQR untouched.
+ *   Event.price      whole RUPEES — the backend multiplies by 100 itself when
+ *                    it syncs a ticket to TIQR (eventSync.service.js:128), so
+ *                    sending paise here is converted a second time and bills
+ *                    100x at checkout.
+ *
+ * `formatInr` / `paiseToRupeeInput` are the paise pair, for bookings.
+ * `formatRupees` / `rupeeInputValue` / `parseRupeeInput` are the rupee pair,
+ * for Event.price. Do not cross them.
+ */
+
+/** `499` rupees → `"₹499"`. For Event.price. */
+export function formatRupees(rupees: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(rupees ?? 0);
+}
+
+/** `499` → `"499"`, for putting into a text input. For Event.price. */
+export function rupeeInputValue(rupees: number | null | undefined): string {
+  return String(Math.trunc(Number(rupees ?? 0)));
+}
+
+/**
+ * `"499"` → `499`, or null if it is not a whole, non-negative amount.
+ *
+ * Whole rupees only: Event.price is an INTEGER column counting rupees, so
+ * there is nowhere to put paise. Accepting "499.50" would silently truncate.
+ */
+export function parseRupeeInput(input: string): number | null {
+  const trimmed = input.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+
+  const rupees = Number(trimmed);
+  return Number.isSafeInteger(rupees) ? rupees : null;
+}
+
 /** `49900` → `"₹499.00"`. */
 export function formatInr(paise: number): string {
   return new Intl.NumberFormat("en-IN", {
