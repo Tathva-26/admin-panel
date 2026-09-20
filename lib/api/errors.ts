@@ -69,12 +69,16 @@ export function toApiError(err: unknown): ApiError {
 
     const body = response.data;
     const known = isApiErrorBody(body) ? body : null;
+    // backend_v2 reports most failures (including image ones) as `{ error }`.
+    const errorText =
+      typeof body?.error === "string" ? (body.error as string) : undefined;
 
     return {
       status: response.status,
       code: known?.code ?? "UNKNOWN_ERROR",
       message:
         known?.message ??
+        errorText ??
         FALLBACK_MESSAGES[response.status] ??
         "Something went wrong.",
       issues: known?.details?.issues ?? [],

@@ -185,12 +185,21 @@ export async function get<T>(
   return normalizeList(unwrap<T>(res.data, key));
 }
 
+/**
+ * The instance defaults to JSON, and with that header axios flattens a
+ * `FormData` body and drops any file in it — so multipart must say so.
+ */
+const multipartConfig = (body: unknown) =>
+  body instanceof FormData
+    ? { headers: { "Content-Type": "multipart/form-data" } }
+    : undefined;
+
 export async function post<T>(
   path: string,
   body?: unknown,
   key?: string,
 ): Promise<T> {
-  const res = await api.post(path, body ?? {});
+  const res = await api.post(path, body ?? {}, multipartConfig(body));
   return unwrap<T>(res.data, key);
 }
 
@@ -199,7 +208,7 @@ export async function patch<T>(
   body?: unknown,
   key?: string,
 ): Promise<T> {
-  const res = await api.patch(path, body ?? {});
+  const res = await api.patch(path, body ?? {}, multipartConfig(body));
   return unwrap<T>(res.data, key);
 }
 

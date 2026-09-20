@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Button from '@/components/ui/Button'
@@ -41,6 +41,8 @@ interface EventFormModalProps {
   eventId?: number | null
   onSaved: () => void
 }
+
+const MAX_IMAGE_BYTES = 1024 * 1024
 
 function blankForm(): EventInput {
   return {
@@ -113,12 +115,27 @@ function EventFormDialog({
   )
 
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [image, setImage] = useState<File | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
+
+  const imagePreview = useMemo(
+    () => (image ? URL.createObjectURL(image) : null),
+    [image],
+  )
+
+  useEffect(() => {
+    if (!imagePreview) return
+    return () => URL.revokeObjectURL(imagePreview)
+  }, [imagePreview])
 
   const venues = useApi<ListResponse<Venue>>('venues:all', listVenues)
 
-  const create = useMutation((body: EventInput) => createEvent(body))
-  const update = useMutation((id: number, body: Partial<EventInput>) =>
-    updateEvent(id, body),
+  const create = useMutation((body: EventInput, image: File | null) =>
+    createEvent(body, image),
+  )
+  const update = useMutation(
+    (id: number, body: Partial<EventInput>, image: File | null) =>
+      updateEvent(id, body, image),
   )
   const archive = useMutation((id: number) => archiveEvent(id))
 
@@ -132,6 +149,20 @@ function EventFormDialog({
 
   const set = <K extends keyof EventInput>(key: K, value: EventInput[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
+
+  function selectImage(file: File | undefined | null) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please choose an image file (PNG, JPG, WEBP).')
+      return
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('Image must be under 1 MB.')
+      return
+    }
+    setImageError(null)
+    setImage(file)
+  }
 
   function handlePriceChange(value: string) {
     setPriceInput(value)
@@ -220,18 +251,18 @@ function EventFormDialog({
         }
       })
 
-      if (Object.keys(changed).length === 0) {
+      if (Object.keys(changed).length === 0 && !image) {
         onClose()
         return
       }
 
-      const result = await update.run(event.id, changed)
+      const result = await update.run(event.id, changed, image)
       if (result) {
         onSaved()
         onClose()
       }
     } else {
-      const result = await create.run(body)
+      const result = await create.run(body, image)
       if (result) {
         onSaved()
         onClose()
@@ -355,8 +386,9 @@ function EventFormDialog({
 
           <Field label='Picture' error={fields.picture}>
             {(props) => (
-              <div
-                {...props}
+              <>
+                <div
+                  {...props}
                 onDragOver={(e) => {
                   e.preventDefault()
                   e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
@@ -374,27 +406,7 @@ function EventFormDialog({
                     'bg-blue-50',
                   )
 
-                  const file = e.dataTransfer.files?.[0]
-
-                  if (!file || !file.type.startsWith('image/')) {
-                    return
-                  }
-
-                  // Upload the image here
-                  const formData = new FormData()
-                  formData.append('file', file)
-
-                  const res = await fetch('/api/upload', {
-                    method: 'POST',
-                    body: formData,
-                  })
-
-                  if (!res.ok) {
-                    return
-                  }
-
-                  const data = await res.json()
-                  set('picture', data.url)
+                  selectImage(e.dataTransfer.files?.[0])
                 }}
                 className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
                 onClick={() =>
@@ -406,30 +418,17 @@ function EventFormDialog({
                   type='file'
                   accept='image/*'
                   className='hidden'
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0]
-
-                    if (!file) return
-
-                    const formData = new FormData()
-                    formData.append('file', file)
-
-                    const res = await fetch('/api/upload', {
-                      method: 'POST',
-                      body: formData,
-                    })
-
-                    if (!res.ok) return
-
-                    const data = await res.json()
-                    set('picture', data.url)
+                  onChange={(e) => {
+                    selectImage(e.target.files?.[0])
+                    // Reset so the same file can be picked again.
+                    e.target.value = ''
                   }}
                 />
 
-                {form.picture ? (
+                {imagePreview || form.picture ? (
                   <div className='space-y-3'>
                     <img
-                      src={form.picture}
+                      src={imagePreview || form.picture || ''}
                       alt='Preview'
                       className='mx-auto h-32 w-32 rounded-lg object-cover'
                     />
@@ -448,7 +447,11 @@ function EventFormDialog({
                     <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
                   </>
                 )}
-              </div>
+                </div>
+                {imageError ? (
+                  <p className='mt-2 text-sm text-red-600'>{imageError}</p>
+                ) : null}
+              </>
             )}
           </Field>
 
