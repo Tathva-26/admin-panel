@@ -42,7 +42,7 @@ interface EventFormModalProps {
   onSaved: () => void
 }
 
-const MAX_IMAGE_BYTES = 1024 * 1024
+const MAX_IMAGE_BYTES = 1024 * 1024 * 3
 
 function blankForm(): EventInput {
   return {
@@ -389,64 +389,69 @@ function EventFormDialog({
               <>
                 <div
                   {...props}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.add('border-blue-500', 'bg-blue-50')
-                }}
-                onDragLeave={(e) => {
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-                }}
-                onDrop={async (e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove(
-                    'border-blue-500',
-                    'bg-blue-50',
-                  )
-
-                  selectImage(e.dataTransfer.files?.[0])
-                }}
-                className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
-                onClick={() =>
-                  document.getElementById('picture-upload')?.click()
-                }
-              >
-                <input
-                  id='picture-upload'
-                  type='file'
-                  accept='image/*'
-                  className='hidden'
-                  onChange={(e) => {
-                    selectImage(e.target.files?.[0])
-                    // Reset so the same file can be picked again.
-                    e.target.value = ''
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.add(
+                      'border-blue-500',
+                      'bg-blue-50',
+                    )
                   }}
-                />
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove(
+                      'border-blue-500',
+                      'bg-blue-50',
+                    )
+                  }}
+                  onDrop={async (e) => {
+                    e.preventDefault()
+                    e.currentTarget.classList.remove(
+                      'border-blue-500',
+                      'bg-blue-50',
+                    )
 
-                {imagePreview || form.picture ? (
-                  <div className='space-y-3'>
-                    <img
-                      src={imagePreview || form.picture || ''}
-                      alt='Preview'
-                      className='mx-auto h-32 w-32 rounded-lg object-cover'
-                    />
-                    <p className='text-xs text-zinc-500'>
-                      Click or drop another image to replace
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <p className='text-sm font-medium text-zinc-700'>
-                      Drag & drop an image here
-                    </p>
-                    <p className='mt-1 text-xs text-zinc-500'>
-                      or click to browse
-                    </p>
-                    <p className='mt-2 text-xs text-zinc-400'>PNG, JPG, WEBP</p>
-                  </>
-                )}
+                    selectImage(e.dataTransfer.files?.[0])
+                  }}
+                  className='flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-zinc-300 bg-zinc-50 p-6 text-center transition hover:border-zinc-400'
+                  onClick={() =>
+                    document.getElementById('picture-upload')?.click()
+                  }
+                >
+                  <input
+                    id='picture-upload'
+                    type='file'
+                    accept='image/*'
+                    className='hidden'
+                    onChange={(e) => {
+                      selectImage(e.target.files?.[0])
+                      // Reset so the same file can be picked again.
+                      e.target.value = ''
+                    }}
+                  />
+
+                  {imagePreview || form.picture ? (
+                    <div className='space-y-3'>
+                      <img
+                        src={imagePreview || form.picture || ''}
+                        alt='Preview'
+                        className='mx-auto h-32 w-32 rounded-lg object-cover'
+                      />
+                      <p className='text-xs text-zinc-500'>
+                        Click or drop another image to replace
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <p className='text-sm font-medium text-zinc-700'>
+                        Drag & drop an image here
+                      </p>
+                      <p className='mt-1 text-xs text-zinc-500'>
+                        or click to browse
+                      </p>
+                      <p className='mt-2 text-xs text-zinc-400'>
+                        PNG, JPG, WEBP
+                      </p>
+                    </>
+                  )}
                 </div>
                 {imageError ? (
                   <p className='mt-2 text-sm text-red-600'>{imageError}</p>
