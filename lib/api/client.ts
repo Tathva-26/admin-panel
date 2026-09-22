@@ -215,7 +215,25 @@ export async function patch<T>(
 /**
  * `DELETE` is an archive operation in this API, not a guaranteed physical
  * delete. Callers should refetch rather than assume the row is gone forever.
+ *
+ * Returns the response body (typed `void` by default, so existing callers
+ * that ignore it are unaffected) for endpoints that report extra state, such
+ * as an event's `tiqrSync` result.
  */
-export async function del(path: string): Promise<void> {
-  await api.delete(path);
+export async function del<T = void>(path: string): Promise<T> {
+  const res = await api.delete(path);
+  return res.data as T;
+}
+
+/**
+ * Like `patch`, but returns the whole response body instead of unwrapping a
+ * single key — for endpoints that return sibling fields (e.g. `tiqrSync`)
+ * alongside the primary resource.
+ */
+export async function patchFull<T>(
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const res = await api.patch(path, body ?? {}, multipartConfig(body));
+  return res.data as T;
 }

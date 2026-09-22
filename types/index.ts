@@ -78,6 +78,14 @@ export interface EventVenue {
   locId?: number | null
 }
 
+/** Best-effort result of pushing a local event change to TIQR. */
+export interface TiqrSyncResult {
+  ok: boolean
+  status?: string
+  error?: string
+  detail?: unknown
+}
+
 export interface AdminEvent {
   id: number
   type: EventType

@@ -3,9 +3,17 @@ import type {
   EventInput,
   EventQuery,
   ListResponse,
+  TiqrSyncResult,
 } from "@/types";
 
-import { del, get, patch, post } from "./client";
+import { del, get, patchFull, post } from "./client";
+
+/** Response shape for endpoints that also push the change to TIQR when the event is synced there. */
+export interface EventSyncedMutationResult {
+  message: string;
+  event: AdminEvent;
+  tiqrSync?: TiqrSyncResult;
+}
 
 const BASE = "/admin/events";
 
@@ -49,7 +57,10 @@ export const updateEvent = (
   body: Partial<EventInput>,
   image?: File | null,
 ) =>
-  patch<AdminEvent>(`${BASE}/${id}`, withImage(toRequestBody(body), image), "event");
+  patchFull<EventSyncedMutationResult>(
+    `${BASE}/${id}`,
+    withImage(toRequestBody(body), image),
+  );
 
 export const publishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/publish`, {}, "event");
@@ -57,5 +68,10 @@ export const publishEvent = (id: number) =>
 export const unpublishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
 
-/** Archive, not a guaranteed physical delete — refetch rather than assume. */
-export const archiveEvent = (id: number) => del(`${BASE}/${id}`);
+/**
+ * Archive, not a guaranteed physical delete — refetch rather than assume.
+ * If the event is synced to TIQR, it's deleted there first; the backend
+ * blocks the archive (502) if that fails, so a 200 here means both succeeded.
+ */
+export const archiveEvent = (id: number) =>
+  del<EventSyncedMutationResult>(`${BASE}/${id}`);

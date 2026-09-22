@@ -42,7 +42,7 @@ interface EventFormModalProps {
   onSaved: () => void
 }
 
-const MAX_IMAGE_BYTES = 1024 * 1024 * 3
+const MAX_IMAGE_BYTES = 1024 * 1024
 
 function blankForm(): EventInput {
   return {
