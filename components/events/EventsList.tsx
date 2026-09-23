@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
 import BulkActionBar from "@/components/common/BulkActionBar";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import SearchInput from "@/components/common/SearchInput";
 import { PublishedBadge } from "@/components/common/StatusBadge";
@@ -90,6 +91,7 @@ export default function EventsList({
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
@@ -179,6 +181,15 @@ export default function EventsList({
     setOutcome({ action, succeeded: ids.length - failures.length, failures });
     refetchEvents();
     refreshDashboard();
+  }
+
+  // Unpublishing only hides events from our local listings; it never touches
+  // TIQR (see setEventPublished on the backend). The convener has to have
+  // already closed each event on TIQR's own admin console, or it stays live
+  // and bookable there regardless of this action.
+  async function confirmBulkUnpublish() {
+    setUnpublishConfirmOpen(false);
+    await runBulk("Unpublish", unpublishEvent);
   }
 
   const columns: Column<AdminEvent>[] = [
@@ -377,11 +388,22 @@ export default function EventsList({
         <Button
           size="sm"
           loading={busy}
-          onClick={() => runBulk("Unpublish", unpublishEvent)}
+          onClick={() => setUnpublishConfirmOpen(true)}
         >
           Unpublish
         </Button>
       </BulkActionBar>
+
+      <ConfirmDialog
+        open={unpublishConfirmOpen}
+        title="Unpublish Events"
+        description={`Before unpublishing ${targets.length} event${targets.length === 1 ? "" : "s"} here, confirm with each convener that they have already closed it on TIQR's own admin console. Unpublishing in this panel only hides events from our local listings — it does not change anything on TIQR, so an event can stay live and bookable there until its convener closes it separately.`}
+        confirmLabel="I've confirmed — unpublish"
+        destructive
+        loading={busy}
+        onConfirm={confirmBulkUnpublish}
+        onCancel={() => setUnpublishConfirmOpen(false)}
+      />
 
       <EventFormModal
         open={modalOpen}

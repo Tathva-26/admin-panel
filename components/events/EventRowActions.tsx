@@ -4,12 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
-import { useMutation } from "@/hooks/useMutation";
-import {
-  archiveEvent,
-  publishEvent,
-  unpublishEvent,
-} from "@/lib/api/events";
+import { publishEvent, unpublishEvent } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import type { AdminEvent } from "@/types";
 
@@ -27,8 +22,9 @@ export default function EventRowActions({
   onError,
 }: EventRowActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
+  const [unpublishError, setUnpublishError] = useState<ApiError | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,34 +38,38 @@ export default function EventRowActions({
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const archive = useMutation((id: number) => archiveEvent(id));
+  const busy = toggling;
 
-  const busy = toggling || archive.loading;
-
-  const handlePublishToggle = useCallback(async () => {
+  // Unpublishing here only hides the event from our own listings -- it does
+  // not touch TIQR (see setEventPublished on the backend), so the convener
+  // has to have already closed it there separately, or it stays live and
+  // bookable on TIQR regardless of what this panel shows.
+  const handlePublishToggle = useCallback(() => {
     setMenuOpen(false);
+    if (event.published) {
+      setUnpublishError(null);
+      setUnpublishConfirmOpen(true);
+      return;
+    }
+    setToggling(true);
+    publishEvent(event.id)
+      .then(onMutated)
+      .catch((err) => onError?.("Publish", toApiError(err)))
+      .finally(() => setToggling(false));
+  }, [event, onMutated, onError]);
+
+  const handleConfirmUnpublish = useCallback(async () => {
     setToggling(true);
     try {
-      if (event.published) {
-        await unpublishEvent(event.id);
-      } else {
-        await publishEvent(event.id);
-      }
+      await unpublishEvent(event.id);
+      setUnpublishConfirmOpen(false);
       onMutated();
     } catch (err) {
-      onError?.(event.published ? "Unpublish" : "Publish", toApiError(err));
+      setUnpublishError(toApiError(err));
     } finally {
       setToggling(false);
     }
-  }, [event, onMutated, onError]);
-
-  const handleArchive = useCallback(async () => {
-    const result = await archive.run(event.id);
-    if (result !== null) {
-      setArchiveOpen(false);
-      onMutated();
-    }
-  }, [event.id, archive, onMutated]);
+  }, [event.id, onMutated]);
 
   return (
     <>
@@ -113,33 +113,22 @@ export default function EventRowActions({
             >
               {event.published ? "Unpublish" : "Publish"}
             </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-              onClick={() => {
-                setMenuOpen(false);
-                archive.reset();
-                setArchiveOpen(true);
-              }}
-            >
-              Archive
-            </button>
           </div>
         ) : null}
       </div>
 
       <ConfirmDialog
-        open={archiveOpen}
-        title="Archive Event"
-        description={`Archive "${event.heading}"? This will remove the event from listings.`}
-        confirmLabel="Archive"
+        open={unpublishConfirmOpen}
+        title="Unpublish Event"
+        description={`Before unpublishing "${event.heading}" here, confirm with the event convener that they have already closed it on TIQR's own admin console. Unpublishing in this panel only hides the event from our local listings — it does not change anything on TIQR, so the event can stay live and bookable there until the convener closes it separately.`}
+        confirmLabel="I've confirmed — unpublish"
         destructive
-        loading={archive.loading}
-        error={archive.error}
-        onConfirm={handleArchive}
+        loading={toggling}
+        error={unpublishError}
+        onConfirm={handleConfirmUnpublish}
         onCancel={() => {
-          archive.reset();
-          setArchiveOpen(false);
+          setUnpublishError(null);
+          setUnpublishConfirmOpen(false);
         }}
       />
     </>

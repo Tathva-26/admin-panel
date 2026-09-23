@@ -30,7 +30,7 @@ Remove that variable to return to the real backend.
 | Section | What it does |
 | --- | --- |
 | Dashboard | Counts across the fest, plus events that need attention |
-| Events | Create, edit, publish and archive events |
+| Events | Create, edit, publish and unpublish events |
 | Venues | Places an event can be scheduled at, and what is on at each |
 | Announcements | Notices shown on the public site once published |
 | Users | Registered users and their roles |

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
-import ConfirmDialog from '@/components/common/ConfirmDialog'
 import Button from '@/components/ui/Button'
 import ErrorState from '@/components/ui/ErrorState'
 import Field from '@/components/ui/Field'
@@ -12,12 +11,7 @@ import Spinner from '@/components/ui/Spinner'
 import { useApi } from '@/hooks/useApi'
 import { useMutation } from '@/hooks/useMutation'
 import { apiErrorMessage } from '@/lib/api/errors'
-import {
-  archiveEvent,
-  createEvent,
-  getEvent,
-  updateEvent,
-} from '@/lib/api/events'
+import { createEvent, getEvent, updateEvent } from '@/lib/api/events'
 import { listVenues } from '@/lib/api/venues'
 import {
   dateTimeInputToIso,
@@ -114,7 +108,6 @@ function EventFormDialog({
     isoToTimeInput(event?.endTime),
   )
 
-  const [archiveOpen, setArchiveOpen] = useState(false)
   const [image, setImage] = useState<File | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
 
@@ -137,7 +130,6 @@ function EventFormDialog({
     (id: number, body: Partial<EventInput>, image: File | null) =>
       updateEvent(id, body, image),
   )
-  const archive = useMutation((id: number) => archiveEvent(id))
 
   const mutation = isEdit ? update : create
 
@@ -277,7 +269,7 @@ function EventFormDialog({
     <>
       <Modal
         open={true}
-        onClose={mutation.loading || archive.loading ? () => {} : onClose}
+        onClose={mutation.loading ? () => {} : onClose}
         title={isEdit ? 'Edit Event' : 'Create Event'}
         description={
           isEdit
@@ -285,41 +277,22 @@ function EventFormDialog({
             : 'Fill in the details to create a new event. Save as draft first.'
         }
         footer={
-          <div className='flex w-full items-center justify-between'>
-            <div>
-              {isEdit && event ? (
-                <Button
-                  size='sm'
-                  variant='ghost'
-                  className='text-red-600 hover:bg-red-50 hover:text-red-700'
-                  disabled={mutation.loading || archive.loading}
-                  onClick={() => {
-                    archive.reset()
-                    setArchiveOpen(true)
-                  }}
-                >
-                  Archive
-                </Button>
-              ) : null}
-            </div>
-            <div className='flex items-center gap-2'>
-              <Button
-                size='sm'
-                onClick={onClose}
-                disabled={mutation.loading || archive.loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                size='sm'
-                variant='primary'
-                loading={mutation.loading}
-                disabled={archive.loading}
-                onClick={handleSubmit}
-              >
-                {isEdit ? 'Save Changes' : 'Create Event'}
-              </Button>
-            </div>
+          <div className='flex w-full items-center justify-end gap-2'>
+            <Button
+              size='sm'
+              onClick={onClose}
+              disabled={mutation.loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              size='sm'
+              variant='primary'
+              loading={mutation.loading}
+              onClick={handleSubmit}
+            >
+              {isEdit ? 'Save Changes' : 'Create Event'}
+            </Button>
           </div>
         }
       >
@@ -570,30 +543,6 @@ function EventFormDialog({
           </Field>
         </div>
       </Modal>
-
-      {isEdit && event ? (
-        <ConfirmDialog
-          open={archiveOpen}
-          title='Archive Event'
-          description={`Archive "${event.heading}"? This will remove the event from listings.`}
-          confirmLabel='Archive'
-          destructive
-          loading={archive.loading}
-          error={archive.error}
-          onConfirm={async () => {
-            const result = await archive.run(event.id)
-            if (result !== null) {
-              setArchiveOpen(false)
-              onSaved()
-              onClose()
-            }
-          }}
-          onCancel={() => {
-            archive.reset()
-            setArchiveOpen(false)
-          }}
-        />
-      ) : null}
     </>
   )
 }

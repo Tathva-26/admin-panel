@@ -6,7 +6,7 @@ import type {
   TiqrSyncResult,
 } from "@/types";
 
-import { del, get, patchFull, post } from "./client";
+import { get, patchFull, post } from "./client";
 
 /** Response shape for endpoints that also push the change to TIQR when the event is synced there. */
 export interface EventSyncedMutationResult {
@@ -67,11 +67,3 @@ export const publishEvent = (id: number) =>
 
 export const unpublishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
-
-/**
- * Archive, not a guaranteed physical delete — refetch rather than assume.
- * If the event is synced to TIQR, it's deleted there first; the backend
- * blocks the archive (502) if that fails, so a 200 here means both succeeded.
- */
-export const archiveEvent = (id: number) =>
-  del<EventSyncedMutationResult>(`${BASE}/${id}`);

@@ -213,12 +213,12 @@ export async function patch<T>(
 }
 
 /**
- * `DELETE` is an archive operation in this API, not a guaranteed physical
- * delete. Callers should refetch rather than assume the row is gone forever.
+ * Generic DELETE call. Whether the backend does a physical delete depends on
+ * the endpoint (e.g. venues and announcements do); check the specific API
+ * function's own doc comment rather than assuming either way.
  *
  * Returns the response body (typed `void` by default, so existing callers
- * that ignore it are unaffected) for endpoints that report extra state, such
- * as an event's `tiqrSync` result.
+ * that ignore it are unaffected) for endpoints that report extra state.
  */
 export async function del<T = void>(path: string): Promise<T> {
   const res = await api.delete(path);
