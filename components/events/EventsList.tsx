@@ -59,7 +59,7 @@ const toExportRow = (event: AdminEvent) => [
     : "",
   event.endTime ? formatDateTime(event.endTime) : "",
   paiseToRupeeInput(event.price),
-  event.capacity ?? "",
+  event.ticketsRemaining ?? "",
   event.venue?.name ?? "",
   event.committee ?? "",
   event.isTeamEvent ? "Yes" : "No",
@@ -224,12 +224,12 @@ export default function EventsList({
       cell: (event) => formatInr(event.price),
     },
     {
-      key: "capacity",
+      key: "ticketsRemaining",
       header: "Capacity",
       align: "right",
       className: "numeric w-24 text-muted-foreground",
       hideOnMobile: true,
-      cell: (event) => event.capacity ?? "—",
+      cell: (event) => event.ticketsRemaining ?? "—",
     },
     {
       key: "createdAt",

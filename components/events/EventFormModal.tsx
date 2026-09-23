@@ -60,7 +60,7 @@ function blankForm(): EventInput {
     committee: '',
     isTeamEvent: false,
     teamSize: null,
-    capacity: null,
+    ticketsRemaining: null,
     published: false,
   }
 }
@@ -81,7 +81,7 @@ function eventToForm(event: AdminEvent): EventInput {
     committee: event.committee ?? '',
     isTeamEvent: event.isTeamEvent,
     teamSize: event.teamSize,
-    capacity: event.capacity,
+    ticketsRemaining: event.ticketsRemaining,
     published: event.published,
   }
 }
@@ -513,16 +513,20 @@ function EventFormDialog({
               )}
             </Field>
 
-            <Field label='Capacity' error={fields.capacity}>
+            <Field
+              label='Capacity'
+              error={fields.ticketsRemaining}
+              hint='Max bookings TIQR will accept. Leave blank to keep the default of 999.'
+            >
               {(props) => (
                 <Input
                   {...props}
                   type='number'
                   min={0}
-                  value={form.capacity ?? ''}
+                  value={form.ticketsRemaining ?? ''}
                   onChange={(e) =>
                     set(
-                      'capacity',
+                      'ticketsRemaining',
                       e.target.value ? Number(e.target.value) : null,
                     )
                   }

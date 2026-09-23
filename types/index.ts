@@ -97,7 +97,8 @@ export interface AdminEvent {
   endTime: string | null
   /** Integer paise. */
   price: number
-  capacity: number | null
+  /** Max bookable quantity on the TIQR ticket; defaults to 999 if unset. */
+  ticketsRemaining: number | null
   isFull: boolean
   isTeamEvent: boolean
   teamSize: number | null
@@ -131,7 +132,8 @@ export interface EventInput {
   isTeamEvent?: boolean
   /** Required by the backend when `isTeamEvent` is true. */
   teamSize?: number | null
-  capacity?: number | null
+  /** Max bookable quantity on the TIQR ticket; defaults to 999 if unset. */
+  ticketsRemaining?: number | null
   published?: boolean
 }
 
