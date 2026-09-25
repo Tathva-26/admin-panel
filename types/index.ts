@@ -112,6 +112,8 @@ export interface AdminEvent {
   catchyPara?: string | null
   committee?: string | null
   ticketId?: number | null
+  /** Set once the event exists on TIQR; such events cannot be deleted. */
+  tiqrEventId?: number | null
   /** Admin-only. When set, the public site asks for it before payment. */
   passcode?: string | null
 }

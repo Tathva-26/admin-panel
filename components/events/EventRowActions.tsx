@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
-import { publishEvent, unpublishEvent } from "@/lib/api/events";
+import { deleteEvent, publishEvent, unpublishEvent } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import type { AdminEvent } from "@/types";
 
@@ -25,7 +25,14 @@ export default function EventRowActions({
   const [toggling, setToggling] = useState(false);
   const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
   const [unpublishError, setUnpublishError] = useState<ApiError | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<ApiError | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // TIQR has no event delete, so only a never-synced draft can be removed.
+  const canDelete =
+    !event.published && !event.tiqrEventId && !event.ticketId;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -38,7 +45,7 @@ export default function EventRowActions({
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  const busy = toggling;
+  const busy = toggling || deleting;
 
   // Unpublishing here only hides the event from our own listings -- it does
   // not touch TIQR (see setEventPublished on the backend), so the convener
@@ -68,6 +75,19 @@ export default function EventRowActions({
       setUnpublishError(toApiError(err));
     } finally {
       setToggling(false);
+    }
+  }, [event.id, onMutated]);
+
+  const handleConfirmDelete = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await deleteEvent(event.id);
+      setDeleteConfirmOpen(false);
+      onMutated();
+    } catch (err) {
+      setDeleteError(toApiError(err));
+    } finally {
+      setDeleting(false);
     }
   }, [event.id, onMutated]);
 
@@ -113,6 +133,20 @@ export default function EventRowActions({
             >
               {event.published ? "Unpublish" : "Publish"}
             </button>
+            {canDelete ? (
+              <button
+                type="button"
+                className="flex w-full items-center px-3 py-1.5 text-left text-sm text-red-600 hover:bg-muted disabled:opacity-50"
+                disabled={busy}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setDeleteError(null);
+                  setDeleteConfirmOpen(true);
+                }}
+              >
+                Delete
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -131,6 +165,23 @@ export default function EventRowActions({
           setUnpublishConfirmOpen(false);
         }}
       />
+
+      {canDelete ? (
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          title="Delete Event"
+          description={`Permanently delete "${event.heading}"? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          loading={deleting}
+          error={deleteError}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => {
+            setDeleteError(null);
+            setDeleteConfirmOpen(false);
+          }}
+        />
+      ) : null}
     </>
   );
 }

@@ -6,7 +6,7 @@ import type {
   TiqrSyncResult,
 } from "@/types";
 
-import { get, patchFull, post } from "./client";
+import { del, get, patchFull, post } from "./client";
 
 /** Response shape for endpoints that also push the change to TIQR when the event is synced there. */
 export interface EventSyncedMutationResult {
@@ -67,3 +67,10 @@ export const publishEvent = (id: number) =>
 
 export const unpublishEvent = (id: number) =>
   post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
+
+/**
+ * Permanent delete. Only allowed for an unpublished event that was never synced
+ * to TIQR; the backend answers 409 (EVENT_PUBLISHED / EVENT_SYNCED) otherwise.
+ */
+export const deleteEvent = (id: number) =>
+  del<{ message: string }>(`${BASE}/${id}`);
