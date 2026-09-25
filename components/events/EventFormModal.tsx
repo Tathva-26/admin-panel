@@ -56,6 +56,7 @@ function blankForm(): EventInput {
     teamSize: null,
     ticketsRemaining: null,
     published: false,
+    passcode: '',
   }
 }
 
@@ -77,6 +78,7 @@ function eventToForm(event: AdminEvent): EventInput {
     teamSize: event.teamSize,
     ticketsRemaining: event.ticketsRemaining,
     published: event.published,
+    passcode: event.passcode ?? '',
   }
 }
 
@@ -538,6 +540,22 @@ function EventFormDialog({
                 value={form.committee ?? ''}
                 onChange={(e) => set('committee', e.target.value)}
                 placeholder='Robotics Committee'
+              />
+            )}
+          </Field>
+
+          <Field
+            label='Payment Passcode'
+            error={fields.passcode}
+            hint='Optional. If set, users must enter this code before they can pay. Leave blank for open registration.'
+          >
+            {(props) => (
+              <Input
+                {...props}
+                value={form.passcode ?? ''}
+                onChange={(e) => set('passcode', e.target.value)}
+                placeholder='Leave blank for none'
+                autoComplete='off'
               />
             )}
           </Field>

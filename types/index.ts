@@ -112,6 +112,8 @@ export interface AdminEvent {
   catchyPara?: string | null
   committee?: string | null
   ticketId?: number | null
+  /** Admin-only. When set, the public site asks for it before payment. */
+  passcode?: string | null
 }
 
 /** Body for `POST /admin/events` and (partially) `PATCH /admin/events/:id`. */
@@ -135,6 +137,8 @@ export interface EventInput {
   /** Max bookable quantity on the TIQR ticket; defaults to 999 if unset. */
   ticketsRemaining?: number | null
   published?: boolean
+  /** Blank clears the gate. */
+  passcode?: string | null
 }
 
 export type EventQuery = ListQuery & {
