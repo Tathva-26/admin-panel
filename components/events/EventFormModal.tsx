@@ -348,13 +348,18 @@ function EventFormDialog({
             )}
           </Field>
 
-          <Field label='Catchy Paragraph' error={fields.catchyPara}>
+          <Field
+            label='Catchy Paragraph'
+            error={fields.catchyPara}
+            hint='Shown as "About This Event" on the site. Line breaks are kept.'
+          >
             {(props) => (
-              <Input
+              <Textarea
                 {...props}
                 value={form.catchyPara ?? ''}
                 onChange={(e) => set('catchyPara', e.target.value)}
                 placeholder='Build something useful'
+                rows={5}
               />
             )}
           </Field>
