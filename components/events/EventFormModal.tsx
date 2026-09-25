@@ -43,7 +43,7 @@ function blankForm(): EventInput {
     type: 'general',
     heading: '',
     description: '',
-    catchyPara: '',
+    extraInfo: '',
     picture: '',
     datetime: null,
     startTime: null,
@@ -65,7 +65,7 @@ function eventToForm(event: AdminEvent): EventInput {
     type: event.type,
     heading: event.heading,
     description: event.description ?? '',
-    catchyPara: event.catchyPara ?? '',
+    extraInfo: event.extraInfo ?? '',
     picture: event.picture ?? '',
     datetime: event.datetime,
     startTime: event.startTime,
@@ -336,29 +336,34 @@ function EventFormDialog({
             </Field>
           </div>
 
-          <Field label='Description' error={fields.description}>
+          <Field
+            label='Short Description'
+            error={fields.description}
+            required
+            hint='The short blurb at the top of the event page and on cards.'
+          >
             {(props) => (
               <Textarea
                 {...props}
                 value={form.description ?? ''}
                 onChange={(e) => set('description', e.target.value)}
-                placeholder='Describe the event…'
+                placeholder='One or two lines about the event'
                 rows={3}
               />
             )}
           </Field>
 
           <Field
-            label='Catchy Paragraph'
-            error={fields.catchyPara}
-            hint='Shown as "About This Event" on the site. Line breaks are kept.'
+            label='Extra Info'
+            error={fields.extraInfo}
+            hint='The full write-up at the bottom of the event page. Line breaks are kept and web links are clickable.'
           >
             {(props) => (
               <Textarea
                 {...props}
-                value={form.catchyPara ?? ''}
-                onChange={(e) => set('catchyPara', e.target.value)}
-                placeholder='Build something useful'
+                value={form.extraInfo ?? ''}
+                onChange={(e) => set('extraInfo', e.target.value)}
+                placeholder='Everything participants should know: format, rules, schedule…'
                 rows={5}
               />
             )}

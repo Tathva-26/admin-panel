@@ -90,7 +90,7 @@ export interface AdminEvent {
   id: number
   type: EventType
   heading: string
-  description: string | null
+  description: string
   picture: string | null
   datetime: string | null
   startTime: string | null
@@ -109,7 +109,7 @@ export interface AdminEvent {
 
   // Present in the create/update body and on the public event shape, but not
   // in the doc's guaranteed response fields — treat as possibly absent.
-  catchyPara?: string | null
+  extraInfo?: string | null
   committee?: string | null
   ticketId?: number | null
   /** Set once the event exists on TIQR; such events cannot be deleted. */
@@ -122,8 +122,8 @@ export interface AdminEvent {
 export interface EventInput {
   type: EventType
   heading: string
-  description?: string | null
-  catchyPara?: string | null
+  description: string
+  extraInfo?: string | null
   picture?: string | null
   datetime?: string | null
   startTime?: string | null
