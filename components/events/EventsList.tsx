@@ -7,19 +7,19 @@ import BulkActionBar from "@/components/common/BulkActionBar";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import DataTable, { type Column, type RowKey } from "@/components/common/DataTable";
 import SearchInput from "@/components/common/SearchInput";
-import { PublishedBadge } from "@/components/common/StatusBadge";
+import { EventStatusBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import { Select } from "@/components/ui/Input";
 import Pagination from "@/components/ui/Pagination";
 import { useCsvExport } from "@/hooks/useCsvExport";
 import { useList } from "@/hooks/useList";
-import { listEvents, publishEvent, unpublishEvent } from "@/lib/api/events";
+import { closeBooking, listEvents, openBooking } from "@/lib/api/events";
 import { apiErrorMessage, toApiError, type ApiError } from "@/lib/api/errors";
 import { formatDate, formatDateTime, formatInr, paiseToRupeeInput } from "@/lib/format";
-import { eventTypeLabel } from "@/lib/labels";
-import { asBool, asEnum, asText } from "@/lib/params";
+import { eventStatusLabel, eventTypeLabel } from "@/lib/labels";
+import { asEnum, asText } from "@/lib/params";
 import { refreshDashboard } from "@/lib/refresh";
-import { EVENT_TYPES, ORDERS, type AdminEvent } from "@/types";
+import { EVENT_STATUSES, EVENT_TYPES, ORDERS, type AdminEvent } from "@/types";
 
 import EventFormModal from "./EventFormModal";
 import EventRowActions from "./EventRowActions";
@@ -54,7 +54,7 @@ const toExportRow = (event: AdminEvent) => [
   event.id,
   event.heading,
   eventTypeLabel(event.type),
-  event.published ? "Published" : "Draft",
+  eventStatusLabel(event.status),
   event.startTime ?? event.datetime
     ? formatDateTime(event.startTime ?? event.datetime)
     : "",
@@ -80,7 +80,7 @@ export default function EventsList({
       pageSize,
       search: asText(filters.search),
       type: asEnum(filters.type, EVENT_TYPES),
-      published: asBool(filters.published),
+      status: asEnum(filters.status, EVENT_STATUSES),
       sort: asText(filters.sort),
       order: asEnum(filters.order, ORDERS),
     }),
@@ -91,7 +91,7 @@ export default function EventsList({
   const [selected, setSelected] = useState<Set<RowKey>>(new Set());
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<BulkOutcome | null>(null);
-  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
+  const [bulkConfirm, setBulkConfirm] = useState<"open" | "close" | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<AdminEvent | null>(null);
@@ -143,7 +143,7 @@ export default function EventsList({
   const activeQuery = {
     search: asText(events.filters.search),
     type: asEnum(events.filters.type, EVENT_TYPES),
-    published: asBool(events.filters.published),
+    status: asEnum(events.filters.status, EVENT_STATUSES),
     sort: asText(events.filters.sort),
     order: asEnum(events.filters.order, ORDERS),
   };
@@ -183,13 +183,13 @@ export default function EventsList({
     refreshDashboard();
   }
 
-  // Unpublishing only hides events from our local listings; it never touches
-  // TIQR (see setEventPublished on the backend). The convener has to have
-  // already closed each event on TIQR's own admin console, or it stays live
-  // and bookable there regardless of this action.
-  async function confirmBulkUnpublish() {
-    setUnpublishConfirmOpen(false);
-    await runBulk("Unpublish", unpublishEvent);
+  // Opening pushes to TIQR (no delete there, so it is one-way). Closing is
+  // local only; the admin confirms TIQR is already full before this runs.
+  async function confirmBulk() {
+    const which = bulkConfirm;
+    setBulkConfirm(null);
+    if (which === "open") await runBulk("Open booking", openBooking);
+    if (which === "close") await runBulk("Close booking", closeBooking);
   }
 
   const columns: Column<AdminEvent>[] = [
@@ -251,10 +251,10 @@ export default function EventsList({
       cell: (event) => formatDate(event.createdAt),
     },
     {
-      key: "published",
+      key: "status",
       header: "State",
       className: "w-28",
-      cell: (event) => <PublishedBadge published={event.published} />,
+      cell: (event) => <EventStatusBadge status={event.status} />,
     },
     {
       key: "actions",
@@ -301,12 +301,15 @@ export default function EventsList({
           <Select
             aria-label="Filter by state"
             className="h-9 w-full sm:h-8 sm:w-36"
-            value={events.filters.published ?? ""}
-            onChange={(e) => events.setFilter("published", e.target.value)}
+            value={events.filters.status ?? ""}
+            onChange={(e) => events.setFilter("status", e.target.value)}
           >
             <option value="">All states</option>
-            <option value="true">Published</option>
-            <option value="false">Draft</option>
+            {EVENT_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {eventStatusLabel(status)}
+              </option>
+            ))}
           </Select>
 
         </div>
@@ -381,28 +384,32 @@ export default function EventsList({
           size="sm"
           variant="primary"
           loading={busy}
-          onClick={() => runBulk("Publish", publishEvent)}
+          onClick={() => setBulkConfirm("open")}
         >
-          Publish
+          Open booking
         </Button>
         <Button
           size="sm"
           loading={busy}
-          onClick={() => setUnpublishConfirmOpen(true)}
+          onClick={() => setBulkConfirm("close")}
         >
-          Unpublish
+          Close booking
         </Button>
       </BulkActionBar>
 
       <ConfirmDialog
-        open={unpublishConfirmOpen}
-        title="Unpublish Events"
-        description={`Before unpublishing ${targets.length} event${targets.length === 1 ? "" : "s"} here, confirm with each convener that they have already closed it on TIQR's own admin console. Unpublishing in this panel only hides events from our local listings — it does not change anything on TIQR, so an event can stay live and bookable there until its convener closes it separately.`}
-        confirmLabel="I've confirmed — unpublish"
+        open={bulkConfirm !== null}
+        title={bulkConfirm === "open" ? "Open Booking" : "Close Booking"}
+        description={
+          bulkConfirm === "open"
+            ? `Open booking for ${targets.length} event${targets.length === 1 ? "" : "s"}? This pushes each one to TIQR and makes it public and bookable. TIQR has no event delete, so this cannot be undone. Events that are not drafts will be rejected.`
+            : `Close booking for ${targets.length} event${targets.length === 1 ? "" : "s"}? Confirm TIQR bookings are already full for each. This only marks them closed here and cannot be undone. Events that are not open will be rejected.`
+        }
+        confirmLabel={bulkConfirm === "open" ? "Open booking" : "Close booking"}
         destructive
         loading={busy}
-        onConfirm={confirmBulkUnpublish}
-        onCancel={() => setUnpublishConfirmOpen(false)}
+        onConfirm={confirmBulk}
+        onCancel={() => setBulkConfirm(null)}
       />
 
       <EventFormModal

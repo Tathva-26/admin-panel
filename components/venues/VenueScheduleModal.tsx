@@ -1,6 +1,6 @@
 "use client";
 
-import { PublishedBadge } from "@/components/common/StatusBadge";
+import { EventStatusBadge } from "@/components/common/StatusBadge";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
 import { cn } from "@/lib/cn";
@@ -83,7 +83,7 @@ export default function VenueScheduleModal({
                 </div>
 
                 <div className="flex shrink-0 flex-col items-end gap-1">
-                  <PublishedBadge published={slot.event.published} />
+                  <EventStatusBadge status={slot.event.status} />
                   {state === "upcoming" ? (
                     <span className="text-[11px] text-muted-foreground">
                       {relativeFromNow(slot.start, now)}
@@ -112,7 +112,7 @@ export default function VenueScheduleModal({
               <p className="min-w-0 flex-1 truncate text-sm text-foreground">
                 {event.heading}
               </p>
-              <PublishedBadge published={event.published} />
+              <EventStatusBadge status={event.status} />
             </li>
           ))}
         </ol>

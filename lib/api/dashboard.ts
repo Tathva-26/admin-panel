@@ -5,6 +5,7 @@ import { get } from "./client";
 interface BackendDashboard {
   users: number;
   events: number;
+  eventStatus: { DRAFT: number; OPEN: number; CLOSED: number };
   venues: number;
   bookings: number;
   announcements: number;
@@ -22,7 +23,12 @@ export const getDashboard = async (): Promise<DashboardStats> => {
   );
 
   return {
-    events: { total: dashboard.events, published: 0, drafts: 0 },
+    events: {
+      total: dashboard.events,
+      open: dashboard.eventStatus?.OPEN ?? 0,
+      closed: dashboard.eventStatus?.CLOSED ?? 0,
+      drafts: dashboard.eventStatus?.DRAFT ?? 0,
+    },
     announcements: { total: dashboard.announcements, published: 0 },
     users: dashboard.users,
     bookings: {

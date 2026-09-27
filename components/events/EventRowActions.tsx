@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Button from "@/components/ui/Button";
-import { deleteEvent, publishEvent, unpublishEvent } from "@/lib/api/events";
+import { closeBooking, deleteEvent, openBooking } from "@/lib/api/events";
 import { toApiError, type ApiError } from "@/lib/api/errors";
 import type { AdminEvent } from "@/types";
 
@@ -12,6 +12,7 @@ interface EventRowActionsProps {
   event: AdminEvent;
   onEdit: (event: AdminEvent) => void;
   onMutated: () => void;
+  /** Kept for callers; transition errors now show in the confirm dialog. */
   onError?: (action: string, error: ApiError) => void;
 }
 
@@ -19,12 +20,11 @@ export default function EventRowActions({
   event,
   onEdit,
   onMutated,
-  onError,
 }: EventRowActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [toggling, setToggling] = useState(false);
-  const [unpublishConfirmOpen, setUnpublishConfirmOpen] = useState(false);
-  const [unpublishError, setUnpublishError] = useState<ApiError | null>(null);
+  const [transitionConfirmOpen, setTransitionConfirmOpen] = useState(false);
+  const [transitionError, setTransitionError] = useState<ApiError | null>(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<ApiError | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -32,7 +32,18 @@ export default function EventRowActions({
 
   // TIQR has no event delete, so only a never-synced draft can be removed.
   const canDelete =
-    !event.published && !event.tiqrEventId && !event.ticketId;
+    event.status === "DRAFT" && !event.tiqrEventId && !event.ticketId;
+
+  // One-way lifecycle: DRAFT -> OPEN -> CLOSED. A CLOSED event has no action.
+  const transition = useMemo(
+    () =>
+      event.status === "DRAFT"
+        ? { label: "Open booking", run: openBooking }
+        : event.status === "OPEN"
+          ? { label: "Close booking", run: closeBooking }
+          : null,
+    [event.status],
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -47,36 +58,19 @@ export default function EventRowActions({
 
   const busy = toggling || deleting;
 
-  // Unpublishing here only hides the event from our own listings -- it does
-  // not touch TIQR (see setEventPublished on the backend), so the convener
-  // has to have already closed it there separately, or it stays live and
-  // bookable on TIQR regardless of what this panel shows.
-  const handlePublishToggle = useCallback(() => {
-    setMenuOpen(false);
-    if (event.published) {
-      setUnpublishError(null);
-      setUnpublishConfirmOpen(true);
-      return;
-    }
-    setToggling(true);
-    publishEvent(event.id)
-      .then(onMutated)
-      .catch((err) => onError?.("Publish", toApiError(err)))
-      .finally(() => setToggling(false));
-  }, [event, onMutated, onError]);
-
-  const handleConfirmUnpublish = useCallback(async () => {
+  const handleConfirmTransition = useCallback(async () => {
+    if (!transition) return;
     setToggling(true);
     try {
-      await unpublishEvent(event.id);
-      setUnpublishConfirmOpen(false);
+      await transition.run(event.id);
+      setTransitionConfirmOpen(false);
       onMutated();
     } catch (err) {
-      setUnpublishError(toApiError(err));
+      setTransitionError(toApiError(err));
     } finally {
       setToggling(false);
     }
-  }, [event.id, onMutated]);
+  }, [event.id, transition, onMutated]);
 
   const handleConfirmDelete = useCallback(async () => {
     setDeleting(true);
@@ -125,14 +119,20 @@ export default function EventRowActions({
             >
               Edit
             </button>
-            <button
-              type="button"
-              className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
-              disabled={busy}
-              onClick={handlePublishToggle}
-            >
-              {event.published ? "Unpublish" : "Publish"}
-            </button>
+            {transition ? (
+              <button
+                type="button"
+                className="flex w-full items-center px-3 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted disabled:opacity-50"
+                disabled={busy}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setTransitionError(null);
+                  setTransitionConfirmOpen(true);
+                }}
+              >
+                {transition.label}
+              </button>
+            ) : null}
             {canDelete ? (
               <button
                 type="button"
@@ -151,20 +151,26 @@ export default function EventRowActions({
         ) : null}
       </div>
 
-      <ConfirmDialog
-        open={unpublishConfirmOpen}
-        title="Unpublish Event"
-        description={`Before unpublishing "${event.heading}" here, confirm with the event convener that they have already closed it on TIQR's own admin console. Unpublishing in this panel only hides the event from our local listings — it does not change anything on TIQR, so the event can stay live and bookable there until the convener closes it separately.`}
-        confirmLabel="I've confirmed — unpublish"
-        destructive
-        loading={toggling}
-        error={unpublishError}
-        onConfirm={handleConfirmUnpublish}
-        onCancel={() => {
-          setUnpublishError(null);
-          setUnpublishConfirmOpen(false);
-        }}
-      />
+      {transition ? (
+        <ConfirmDialog
+          open={transitionConfirmOpen}
+          title={transition.label}
+          description={
+            event.status === "DRAFT"
+              ? `Open booking for "${event.heading}"? This pushes the event to TIQR and makes it public and bookable. TIQR has no event delete, so this cannot be undone.`
+              : `Close booking for "${event.heading}"? Confirm that TIQR bookings are already full. TIQR stops selling on its own once capacity fills, so this only marks the event closed here. It cannot be reopened.`
+          }
+          confirmLabel={transition.label}
+          destructive
+          loading={toggling}
+          error={transitionError}
+          onConfirm={handleConfirmTransition}
+          onCancel={() => {
+            setTransitionError(null);
+            setTransitionConfirmOpen(false);
+          }}
+        />
+      ) : null}
 
       {canDelete ? (
         <ConfirmDialog

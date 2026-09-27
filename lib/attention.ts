@@ -2,7 +2,7 @@
  * Cheap consistency checks over events the panel has already loaded.
  *
  * These are the mistakes that are invisible in a list but very visible to a
- * student on the public site — an event published with nowhere to go, a team
+ * student on the public site — an event opened with nowhere to go, a team
  * event that will not let anyone register. Catching them here costs one pass
  * over data we are fetching anyway.
  */
@@ -52,12 +52,12 @@ export function findEventIssues(
   for (const event of events) {
     const start = startsAt(event);
 
-    if (event.published && !event.venue) {
-      add(event, "venue", "Published with no venue", "warn");
+    if (event.status === "OPEN" && !event.venue) {
+      add(event, "venue", "Open with no venue", "warn");
     }
 
-    if (event.published && !start) {
-      add(event, "start", "Published with no start time", "warn");
+    if (event.status === "OPEN" && !start) {
+      add(event, "start", "Open with no start time", "warn");
     }
 
     // The backend requires teamSize for a team event, so anything here is a row
@@ -66,12 +66,8 @@ export function findEventIssues(
       add(event, "team", "Team event with no team size", "warn");
     }
 
-    if (!event.published && start && start < now) {
+    if (event.status === "DRAFT" && start && start < now) {
       add(event, "stale", "Still a draft, and its date has passed", "info");
-    }
-
-    if (event.published && event.isFull) {
-      add(event, "full", "Published and marked full", "info");
     }
   }
 

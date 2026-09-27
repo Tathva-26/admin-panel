@@ -86,6 +86,10 @@ export interface TiqrSyncResult {
   detail?: unknown
 }
 
+/** One-way lifecycle: DRAFT -> OPEN -> CLOSED. */
+export const EVENT_STATUSES = ['DRAFT', 'OPEN', 'CLOSED'] as const
+export type EventStatus = (typeof EVENT_STATUSES)[number]
+
 export interface AdminEvent {
   id: number
   type: EventType
@@ -99,10 +103,9 @@ export interface AdminEvent {
   price: number
   /** Max bookable quantity on the TIQR ticket; defaults to 999 if unset. */
   ticketsRemaining: number | null
-  isFull: boolean
   isTeamEvent: boolean
   teamSize: number | null
-  published: boolean
+  status: EventStatus
   venue: EventVenue | null
   createdAt: string
   updatedAt: string
@@ -138,14 +141,13 @@ export interface EventInput {
   teamSize?: number | null
   /** Max bookable quantity on the TIQR ticket; defaults to 999 if unset. */
   ticketsRemaining?: number | null
-  published?: boolean
   /** Blank clears the gate. */
   passcode?: string | null
 }
 
 export type EventQuery = ListQuery & {
   type?: EventType
-  published?: boolean
+  status?: EventStatus
 }
 
 /* ------------------------------------------------------------------ */
@@ -322,7 +324,7 @@ export interface BookingStatusInput {
 /* ------------------------------------------------------------------ */
 
 export interface DashboardStats {
-  events: { total: number; published: number; drafts: number }
+  events: { total: number; open: number; closed: number; drafts: number }
   announcements: { total: number; published: number }
   users: number
   bookings: {

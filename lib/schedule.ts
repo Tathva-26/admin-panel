@@ -75,11 +75,11 @@ export function endOf(slot: Slot): number {
  * What this venue is doing at `now`: an event in progress, else the soonest one
  * still to come, else nothing.
  *
- * Only published events count. A draft is not scheduled — showing one as "live"
+ * Only OPEN and CLOSED events count. A draft is not scheduled — showing one as "live"
  * would claim something is happening that the public cannot even see.
  */
 export function venueActivity(events: AdminEvent[], now: Date): VenueActivity {
-  const slots = toSlots(events.filter((event) => event.published));
+  const slots = toSlots(events.filter((event) => event.status !== "DRAFT"));
   const time = now.getTime();
 
   const live = slots.find(

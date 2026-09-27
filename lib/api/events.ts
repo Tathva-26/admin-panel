@@ -62,15 +62,17 @@ export const updateEvent = (
     withImage(toRequestBody(body), image),
   );
 
-export const publishEvent = (id: number) =>
-  post<AdminEvent>(`${BASE}/${id}/publish`, {}, "event");
+/** DRAFT -> OPEN. Pushes the event to TIQR first; TIQR has no delete, so this is one-way. */
+export const openBooking = (id: number) =>
+  post<EventSyncedMutationResult>(`${BASE}/${id}/open-booking`, {});
 
-export const unpublishEvent = (id: number) =>
-  post<AdminEvent>(`${BASE}/${id}/unpublish`, {}, "event");
+/** OPEN -> CLOSED. Local only: TIQR stops selling on its own once its capacity is full. */
+export const closeBooking = (id: number) =>
+  post<EventSyncedMutationResult>(`${BASE}/${id}/close-booking`, {});
 
 /**
- * Permanent delete. Only allowed for an unpublished event that was never synced
- * to TIQR; the backend answers 409 (EVENT_PUBLISHED / EVENT_SYNCED) otherwise.
+ * Permanent delete. Only allowed for a DRAFT that was never synced to TIQR;
+ * the backend answers 409 (EVENT_NOT_DRAFT / EVENT_SYNCED) otherwise.
  */
 export const deleteEvent = (id: number) =>
   del<{ message: string }>(`${BASE}/${id}`);

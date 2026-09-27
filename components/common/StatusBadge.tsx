@@ -1,6 +1,6 @@
 import Badge, { type BadgeTone } from "@/components/ui/Badge";
 import { bookingStatusLabel, roleLabel } from "@/lib/labels";
-import type { BookingStatus, Role } from "@/types";
+import type { BookingStatus, EventStatus, Role } from "@/types";
 
 /**
  * Colour is decided once, here, so the same state does not end up green on one
@@ -28,6 +28,17 @@ export function PublishedBadge({ published }: { published: boolean }) {
       {published ? "Published" : "Draft"}
     </Badge>
   );
+}
+
+const EVENT_STATUS_BADGES: Record<EventStatus, { tone: BadgeTone; label: string }> = {
+  DRAFT: { tone: "neutral", label: "Draft" },
+  OPEN: { tone: "green", label: "Open" },
+  CLOSED: { tone: "amber", label: "Closed" },
+};
+
+export function EventStatusBadge({ status }: { status: EventStatus }) {
+  const { tone, label } = EVENT_STATUS_BADGES[status] ?? EVENT_STATUS_BADGES.DRAFT;
+  return <Badge tone={tone}>{label}</Badge>;
 }
 
 export function RoleBadge({ role }: { role: Role }) {

@@ -85,7 +85,7 @@ export default function DashboardView() {
   }
 
   const statsData = stats.data ?? {
-    events: { total: 0, published: 0, drafts: 0 },
+    events: { total: 0, open: 0, closed: 0, drafts: 0 },
     announcements: { total: 0, published: 0 },
     users: 0,
     bookings: { total: 0, pending: 0, confirmed: 0, failed: 0 },
@@ -140,9 +140,13 @@ export default function DashboardView() {
                     <span className="text-muted-foreground">Loading...</span>
                   ) : (
                     <>
-                      Published:{" "}
+                      Open:{" "}
                       <span className="font-bold text-foreground">
-                        {statsData.events.published}
+                        {statsData.events.open}
+                      </span>
+                      {" "}· Closed:{" "}
+                      <span className="font-bold text-foreground">
+                        {statsData.events.closed}
                       </span>
                       {" "}/ {statsData.events.total} Events
                     </>

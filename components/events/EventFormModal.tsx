@@ -55,7 +55,6 @@ function blankForm(): EventInput {
     isTeamEvent: false,
     teamSize: null,
     ticketsRemaining: null,
-    published: false,
     passcode: '',
   }
 }
@@ -77,7 +76,6 @@ function eventToForm(event: AdminEvent): EventInput {
     isTeamEvent: event.isTeamEvent,
     teamSize: event.teamSize,
     ticketsRemaining: event.ticketsRemaining,
-    published: event.published,
     passcode: event.passcode ?? '',
   }
 }

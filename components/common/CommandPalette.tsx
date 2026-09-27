@@ -10,7 +10,7 @@ import { listEvents } from "@/lib/api/events";
 import { listUsers } from "@/lib/api/users";
 import { listVenues } from "@/lib/api/venues";
 import { formatInr } from "@/lib/format";
-import { bookingStatusLabel, eventTypeLabel } from "@/lib/labels";
+import { bookingStatusLabel, eventStatusLabel, eventTypeLabel } from "@/lib/labels";
 import { NAV_ITEMS } from "@/lib/nav";
 
 interface PaletteItem {
@@ -152,7 +152,7 @@ export default function CommandPalette({
           next.push({
             id: `event:${event.id}`,
             label: event.heading,
-            hint: `${eventTypeLabel(event.type)} · ${event.published ? "Published" : "Draft"}`,
+            hint: `${eventTypeLabel(event.type)} · ${eventStatusLabel(event.status)}`,
             group: "Events",
             href: `/events?eventId=${event.id}`,
           });

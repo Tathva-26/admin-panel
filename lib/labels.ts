@@ -14,6 +14,7 @@
 import type {
   BookingKind,
   BookingStatus,
+  EventStatus,
   EventType,
   Role,
 } from "@/types";
@@ -23,6 +24,12 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   lectures: "Lectures",
   competitions: "Competitions",
   general: "General",
+};
+
+export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
+  DRAFT: "Draft",
+  OPEN: "Open",
+  CLOSED: "Closed",
 };
 
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {
@@ -46,6 +53,9 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** Falls back to the raw value, so an unknown one shows rather than vanishing. */
 export const eventTypeLabel = (type: EventType): string =>
   EVENT_TYPE_LABELS[type] ?? type;
+
+export const eventStatusLabel = (status: EventStatus): string =>
+  EVENT_STATUS_LABELS[status] ?? status;
 
 export const bookingStatusLabel = (status: BookingStatus): string =>
   BOOKING_STATUS_LABELS[status] ?? status;
