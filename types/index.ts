@@ -66,6 +66,7 @@ export const EVENT_TYPES = [
   'lectures',
   'competitions',
   'general',
+  'passes',
 ] as const
 
 export type EventType = (typeof EVENT_TYPES)[number]

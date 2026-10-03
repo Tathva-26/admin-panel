@@ -24,6 +24,7 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   lectures: "Lectures",
   competitions: "Competitions",
   general: "General",
+  passes: "Passes",
 };
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {
