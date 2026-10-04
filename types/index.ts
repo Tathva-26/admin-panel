@@ -336,3 +336,79 @@ export interface DashboardStats {
   }
   contactMessages: { new: number }
 }
+
+/* ---- accommodation ------------------------------------------------------ */
+
+export type Gender = "MALE" | "FEMALE";
+export type Diet = "VEG" | "NONVEG";
+
+/**
+ * Physical stock, counted per NIGHT in the tier's own unit: a dormitory is
+ * sold per bed, a sharing room as a whole room.
+ */
+export interface RoomInventory {
+  id: number;
+  tier: string;
+  gender: Gender;
+  unit: string;
+  total: number;
+}
+
+/**
+ * One sellable room SKU, backed by its own TIQR ticket. `price` is paise for
+ * the WHOLE stay, never a nightly rate. `tiqrTicketId` is null until the SKU
+ * has been provisioned, and until then it cannot be sold.
+ */
+export interface RoomRate {
+  id: number;
+  tier: string;
+  gender: Gender;
+  nights: number;
+  price: number;
+  tiqrTicketId: number | null;
+}
+
+export interface FoodRate {
+  id: number;
+  day: number;
+  diet: Diet;
+  price: number;
+  tiqrTicketId: number | null;
+}
+
+/** Free units on each night, keyed by night number. */
+export interface RoomAvailability {
+  tier: string;
+  gender: Gender;
+  unit: string;
+  total: number;
+  byNight: Record<string, number>;
+}
+
+export interface AccommodationSummary {
+  inventory: RoomInventory[];
+  rooms: RoomRate[];
+  food: FoodRate[];
+  availability: RoomAvailability[];
+  bookingCount: number;
+  /** What catering has to cook, per day and diet. */
+  kitchen: { day: number; diet: Diet; quantity: number }[];
+}
+
+export interface AccommodationBooking {
+  bookingUid: string;
+  userId: string;
+  status: string;
+  amount: number;
+  createdAt: string;
+  user: { id: string; name: string; email: string; phone: string | null } | null;
+  rooms: {
+    id: number;
+    tier: string;
+    gender: Gender;
+    checkInDay: number;
+    nights: number;
+    quantity: number;
+  }[];
+  food: { id: number; day: number; diet: Diet; quantity: number }[];
+}

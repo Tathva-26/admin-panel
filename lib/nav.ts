@@ -39,6 +39,11 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Registered users and their roles.",
   },
   {
+    href: "/accommodation",
+    label: "Accommodation",
+    description: "Hostel stock, pricing and per-night availability.",
+  },
+  {
     href: "/bookings",
     label: "Bookings",
     description: "Event and accommodation bookings, and their payment state.",
