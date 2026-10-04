@@ -63,7 +63,7 @@ function InlineNumber({
         }}
         className="h-8 w-24 text-right"
       />
-      {suffix ? <span className="text-xs text-muted">{suffix}</span> : null}
+      {suffix ? <span className="text-xs text-muted-foreground">{suffix}</span> : null}
     </span>
   );
 }
@@ -92,7 +92,7 @@ function NightCells({ row }: { row: RoomAvailability }) {
               "inline-flex min-w-[3.25rem] items-center justify-center rounded border px-1.5 py-0.5 text-xs tabular-nums",
               soldOut
                 ? "border-red-500/40 bg-red-500/10 text-red-400"
-                : "border-border text-muted",
+                : "border-border text-muted-foreground",
             ].join(" ")}
           >
             {free}
@@ -135,7 +135,7 @@ export default function AccommodationView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>{bookingCount} booking(s)</span>
         <span aria-hidden>·</span>
         <span>Check-in 11:00, check-out 10:00</span>
@@ -160,7 +160,7 @@ export default function AccommodationView() {
       {/* Stock and live availability */}
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Stock</h2>
-        <p className="mb-4 text-xs text-muted">
+        <p className="mb-4 text-xs text-muted-foreground">
           Totals are per night, in each tier&apos;s own unit. The three boxes
           are how many are still free on nights 1, 2 and 3.
         </p>
@@ -168,7 +168,7 @@ export default function AccommodationView() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2 pr-4 font-medium">Tier</th>
                 <th className="pb-2 pr-4 font-medium">Gender</th>
                 <th className="pb-2 pr-4 font-medium">Total</th>
@@ -183,7 +183,7 @@ export default function AccommodationView() {
                 return (
                   <tr key={row.id} className="border-b border-border/50">
                     <td className="py-2 pr-4">{tierName(row.tier)}</td>
-                    <td className="py-2 pr-4 text-muted">
+                    <td className="py-2 pr-4 text-muted-foreground">
                       {genderName(row.gender)}
                     </td>
                     <td className="py-2 pr-4">
@@ -218,7 +218,7 @@ export default function AccommodationView() {
       {/* Room pricing */}
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Room prices</h2>
-        <p className="mb-4 text-xs text-muted">
+        <p className="mb-4 text-xs text-muted-foreground">
           Per whole stay, not per night. Saving also reprices the ticket on TIQR;
           if that fails nothing is saved here either.
         </p>
@@ -226,7 +226,7 @@ export default function AccommodationView() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2 pr-4 font-medium">Tier</th>
                 <th className="pb-2 pr-4 font-medium">Gender</th>
                 <th className="pb-2 pr-4 font-medium">Nights</th>
@@ -238,7 +238,7 @@ export default function AccommodationView() {
               {rooms.map((row) => (
                 <tr key={row.id} className="border-b border-border/50">
                   <td className="py-2 pr-4">{tierName(row.tier)}</td>
-                  <td className="py-2 pr-4 text-muted">
+                  <td className="py-2 pr-4 text-muted-foreground">
                     {genderName(row.gender)}
                   </td>
                   <td className="py-2 pr-4 tabular-nums">{row.nights}</td>
@@ -255,7 +255,7 @@ export default function AccommodationView() {
                   </td>
                   <td className="py-2">
                     {row.tiqrTicketId ? (
-                      <span className="text-xs tabular-nums text-muted">
+                      <span className="text-xs tabular-nums text-muted-foreground">
                         #{row.tiqrTicketId}
                       </span>
                     ) : (
@@ -278,14 +278,14 @@ export default function AccommodationView() {
       {/* Food */}
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Food coupons</h2>
-        <p className="mb-4 text-xs text-muted">
+        <p className="mb-4 text-xs text-muted-foreground">
           One coupon covers breakfast and lunch for its day.
         </p>
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th className="pb-2 pr-4 font-medium">Day</th>
                 <th className="pb-2 pr-4 font-medium">Diet</th>
                 <th className="pb-2 pr-4 font-medium">Price (₹)</th>
@@ -302,7 +302,7 @@ export default function AccommodationView() {
                 return (
                   <tr key={row.id} className="border-b border-border/50">
                     <td className="py-2 pr-4">Day {row.day}</td>
-                    <td className="py-2 pr-4 text-muted">
+                    <td className="py-2 pr-4 text-muted-foreground">
                       {dietName(row.diet)}
                     </td>
                     <td className="py-2 pr-4">
@@ -319,7 +319,7 @@ export default function AccommodationView() {
                     <td className="py-2 pr-4 tabular-nums">{sold}</td>
                     <td className="py-2">
                       {row.tiqrTicketId ? (
-                        <span className="text-xs tabular-nums text-muted">
+                        <span className="text-xs tabular-nums text-muted-foreground">
                           #{row.tiqrTicketId}
                         </span>
                       ) : (
@@ -334,7 +334,7 @@ export default function AccommodationView() {
         </div>
 
         {/* What catering has to cook. */}
-        <p className="mt-4 text-xs text-muted">
+        <p className="mt-4 text-xs text-muted-foreground">
           Kitchen totals:{" "}
           {kitchen.length === 0
             ? "nothing booked yet"
