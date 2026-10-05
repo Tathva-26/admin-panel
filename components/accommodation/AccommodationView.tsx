@@ -1,6 +1,6 @@
 "use client";
 
-import Badge from "@/components/ui/Badge";
+import Badge, { type BadgeTone } from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/ui/ErrorState";
@@ -13,7 +13,8 @@ import {
   updateInventory,
   updateRoomRate,
 } from "@/lib/api/accommodation";
-import type { Gender, RoomAvailability } from "@/types";
+import { formatInr } from "@/lib/format";
+import type { AccommodationSummary, Gender, RoomAvailability } from "@/types";
 
 const TIER_LABEL: Record<string, string> = {
   dormitory: "Dormitory",
@@ -24,6 +25,12 @@ const TIER_LABEL: Record<string, string> = {
 const tierName = (tier: string) => TIER_LABEL[tier] ?? tier;
 const genderName = (gender: Gender) => (gender === "MALE" ? "Male" : "Female");
 
+const STATUS_TONE: Record<string, BadgeTone> = {
+  CONFIRMED: "green",
+  PENDING: "amber",
+  FAILED: "red",
+};
+
 /** Rupee input → paise, or null when it isn't a usable number. */
 function toPaise(value: string): number | null {
   const rupees = Number(value);
@@ -32,33 +39,46 @@ function toPaise(value: string): number | null {
 }
 
 /**
- * Per-night free counts for one tier+gender.
+ * Per-night stock for one tier+gender: free on top, then paid and held.
  *
  * Shown night by night rather than as a single number because that is how
  * the stock actually behaves: a two-night stay from day 1 and another from
  * day 2 both hold a unit on night 2, so one tier can be full midweek and
- * wide open at either end.
+ * wide open at either end. "Held" is carts still at the payment page; the
+ * reconcile job releases them if they are not paid within 30 minutes.
  */
-function NightCells({ row }: { row: RoomAvailability }) {
+function NightCells({
+  row,
+  taken,
+}: {
+  row: RoomAvailability;
+  taken: AccommodationSummary["occupancy"][string] | undefined;
+}) {
   const nights = Object.keys(row.byNight).sort();
 
   return (
     <span className="inline-flex gap-1">
       {nights.map((night) => {
         const free = row.byNight[night];
+        const paid = taken?.[night]?.CONFIRMED ?? 0;
+        const held = taken?.[night]?.PENDING ?? 0;
         const soldOut = free <= 0;
         return (
           <span
             key={night}
-            title={`Night ${night}: ${free} of ${row.total} free`}
+            title={`Night ${night}: ${paid} paid, ${held} held, ${free} free of ${row.total}`}
             className={[
-              "inline-flex min-w-[3.25rem] items-center justify-center rounded border px-1.5 py-0.5 text-xs tabular-nums",
+              "inline-flex min-w-[4.5rem] flex-col items-center rounded border px-1.5 py-1 text-xs tabular-nums",
               soldOut
                 ? "border-red-500/40 bg-red-500/10 text-red-400"
                 : "border-border text-muted-foreground",
             ].join(" ")}
           >
-            {free}
+            <span className="text-sm font-medium text-foreground">{free}</span>
+            <span className="text-[10px] leading-tight">
+              <span className="text-success">{paid} paid</span>
+              {held ? <span className="text-warning"> · {held} held</span> : null}
+            </span>
           </span>
         );
       })}
@@ -80,7 +100,16 @@ export default function AccommodationView() {
   }
   if (!summary.data) return null;
 
-  const { inventory, rooms, availability, bookingCount } = summary.data;
+  // Defaults keep the tab working against a backend that predates the
+  // paid/held breakdown.
+  const {
+    inventory,
+    rooms,
+    availability,
+    bookingCount,
+    bookings = [],
+    occupancy = {},
+  } = summary.data;
 
   // A SKU with no TIQR ticket cannot be sold, whatever the price says, so it
   // is called out rather than left looking live.
@@ -95,6 +124,13 @@ export default function AccommodationView() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>{bookingCount} booking(s)</span>
+        {bookings.map((row) => (
+          <span key={row.status} className="inline-flex items-center gap-1.5">
+            <span aria-hidden>·</span>
+            <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>{row.status}</Badge>
+            {row.count}, {formatInr(row.amount)}
+          </span>
+        ))}
         <span aria-hidden>·</span>
         <span>Check-in 11:00, check-out 10:00</span>
         <span aria-hidden>·</span>
@@ -119,8 +155,10 @@ export default function AccommodationView() {
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Stock</h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Totals are per night, in each tier&apos;s own unit. The three boxes
-          are how many are still free on nights 1, 2 and 3.
+          Totals are per night, in each tier&apos;s own unit. Each box is one
+          night (1, 2, 3): the big number is free, under it how many are paid
+          and how many are held by carts still at payment. Held units are
+          released if not paid within 30 minutes.
         </p>
 
         <div className="overflow-x-auto">
@@ -157,7 +195,12 @@ export default function AccommodationView() {
                       />
                     </td>
                     <td className="py-2">
-                      {free ? <NightCells row={free} /> : null}
+                      {free ? (
+                        <NightCells
+                          row={free}
+                          taken={occupancy[`${row.tier}|${row.gender}`]}
+                        />
+                      ) : null}
                     </td>
                   </tr>
                 );
