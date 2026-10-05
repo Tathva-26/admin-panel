@@ -50,6 +50,13 @@ export default function FoodView() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="secondary" size="sm" onClick={refresh}>
+          Refresh
+        </Button>
+        <SyncButton onDone={refresh} />
+      </div>
+
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>
           {eventId ? `TIQR event #${eventId}` : "No TIQR food event yet"}
@@ -238,13 +245,6 @@ export default function FoodView() {
           </div>
         )}
       </Card>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={refresh}>
-          Refresh
-        </Button>
-        <SyncButton onDone={refresh} />
-      </div>
     </div>
   );
 }

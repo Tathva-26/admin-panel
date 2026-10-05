@@ -122,6 +122,18 @@ export default function AccommodationView() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={summary.refetch}
+          disabled={busy}
+        >
+          Refresh
+        </Button>
+        <SyncButton onDone={summary.refetch} />
+      </div>
+
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>{bookingCount} booking(s)</span>
         {bookings.map((row) => (
@@ -275,18 +287,6 @@ export default function AccommodationView() {
           </p>
         ) : null}
       </Card>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={summary.refetch}
-          disabled={busy}
-        >
-          Refresh
-        </Button>
-        <SyncButton onDone={summary.refetch} />
-      </div>
     </div>
   );
 }
