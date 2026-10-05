@@ -365,7 +365,12 @@ export interface RoomRate {
   gender: Gender;
   nights: number;
   price: number;
+  /** Older all-dates ticket on the single accommodation event; now null. */
   tiqrTicketId: number | null;
+  /** Sellable on some TIQR ticket. Present on the admin summary. */
+  onSale?: boolean;
+  /** Date-specific tickets backing this rate, one per stay event. */
+  stayTickets?: number;
 }
 
 export interface FoodRate {
@@ -386,6 +391,8 @@ export interface RoomAvailability {
 }
 
 export interface AccommodationSummary {
+  /** False while room and food bookings are paused. */
+  bookingsOpen?: boolean;
   inventory: RoomInventory[];
   rooms: RoomRate[];
   availability: RoomAvailability[];
