@@ -390,6 +390,13 @@ export interface AccommodationSummary {
   rooms: RoomRate[];
   availability: RoomAvailability[];
   bookingCount: number;
+  /** Bookings and paise (before TIQR's fee) per status. */
+  bookings: { status: string; count: number; amount: number }[];
+  /**
+   * Keyed `tier|gender`, then night: units paid for (CONFIRMED) and units held
+   * by carts still at the payment page (PENDING).
+   */
+  occupancy: Record<string, Record<string, { CONFIRMED: number; PENDING: number }>>;
 }
 
 export interface AccommodationBooking {
