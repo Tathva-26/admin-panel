@@ -186,6 +186,17 @@ export async function get<T>(
 }
 
 /**
+ * `get` for a response that is ONE object, not a list. `normalizeList` turns
+ * anything holding a `bookings`/`events`/... array into a list envelope, which
+ * silently wipes a summary that merely includes such an array as one field
+ * (the accommodation summary's per-status `bookings` did exactly that).
+ */
+export async function getObject<T>(path: string, params?: QueryParams): Promise<T> {
+  const res = await api.get(path, { params: cleanParams(params) });
+  return unwrap<T>(res.data);
+}
+
+/**
  * The instance defaults to JSON, and with that header axios flattens a
  * `FormData` body and drops any file in it — so multipart must say so.
  */

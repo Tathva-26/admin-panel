@@ -1,6 +1,6 @@
 import type { FoodOrder, FoodRate, FoodSummary } from "@/types";
 
-import { get, patch } from "./client";
+import { get, getObject, patch } from "./client";
 
 const BASE = "/admin/food";
 
@@ -8,7 +8,7 @@ const BASE = "/admin/food";
  * Food coupons live on their own TIQR event, separate from accommodation, so
  * kitchen counts and coupon money are read here and nowhere else.
  */
-export const getFood = () => get<FoodSummary>(BASE);
+export const getFood = () => getObject<FoodSummary>(BASE);
 
 export const listFoodOrders = () =>
   get<{ orders: FoodOrder[]; count: number }>(`${BASE}/orders`);

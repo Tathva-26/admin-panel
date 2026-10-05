@@ -5,7 +5,7 @@ import type {
   RoomRate,
 } from "@/types";
 
-import { get, patch } from "./client";
+import { get, getObject, patch } from "./client";
 
 const BASE = "/admin/accommodation";
 
@@ -16,7 +16,7 @@ const BASE = "/admin/accommodation";
  * each booking occupies — two stays starting on different days can still
  * collide — so it cannot be derived from the inventory totals alone.
  */
-export const getAccommodation = () => get<AccommodationSummary>(BASE);
+export const getAccommodation = () => getObject<AccommodationSummary>(BASE);
 
 export const listAccommodationBookings = () =>
   get<{ bookings: AccommodationBooking[]; count: number }>(`${BASE}/bookings`);
