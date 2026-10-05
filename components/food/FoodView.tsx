@@ -5,12 +5,13 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
+import SyncButton from "@/components/accommodation/SyncButton";
 import InlineNumber from "@/components/ui/InlineNumber";
 import Spinner from "@/components/ui/Spinner";
 import { useApi } from "@/hooks/useApi";
 import { useMutation } from "@/hooks/useMutation";
 import { getFood, listFoodOrders, updateFoodRate } from "@/lib/api/food";
-import { formatDateTime, formatInr, rupeeInputToPaise } from "@/lib/format";
+import { formatDateTime, rupeeInputToPaise } from "@/lib/format";
 import type { Diet } from "@/types";
 
 const DAYS = [1, 2, 3];
@@ -59,7 +60,7 @@ export default function FoodView() {
             <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>
               {row.status}
             </Badge>
-            {row.count} order{row.count === 1 ? "" : "s"}, {formatInr(row.amount)}
+            {row.count} order{row.count === 1 ? "" : "s"}
           </span>
         ))}
       </div>
@@ -181,7 +182,7 @@ export default function FoodView() {
       <Card>
         <h2 className="mb-1 text-sm font-semibold">Orders</h2>
         <p className="mb-4 text-xs text-muted-foreground">
-          Newest first. Amounts are before TIQR&apos;s platform fee.
+          Newest first.
         </p>
 
         {orders.loading && !orders.data ? (
@@ -198,7 +199,6 @@ export default function FoodView() {
                   <th className="pb-2 pr-4 font-medium">Placed</th>
                   <th className="pb-2 pr-4 font-medium">Buyer</th>
                   <th className="pb-2 pr-4 font-medium">Coupons</th>
-                  <th className="pb-2 pr-4 font-medium">Amount</th>
                   <th className="pb-2 font-medium">Status</th>
                 </tr>
               </thead>
@@ -226,9 +226,6 @@ export default function FoodView() {
                         )
                         .join(", ")}
                     </td>
-                    <td className="py-2 pr-4 tabular-nums">
-                      {formatInr(order.amount)}
-                    </td>
                     <td className="py-2">
                       <Badge tone={STATUS_TONE[order.status] ?? "neutral"}>
                         {order.status}
@@ -242,10 +239,11 @@ export default function FoodView() {
         )}
       </Card>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button variant="secondary" size="sm" onClick={refresh}>
           Refresh
         </Button>
+        <SyncButton onDone={refresh} />
       </div>
     </div>
   );

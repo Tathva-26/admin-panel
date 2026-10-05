@@ -4,6 +4,7 @@ import Badge, { type BadgeTone } from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/ui/ErrorState";
+import SyncButton from "@/components/accommodation/SyncButton";
 import InlineNumber from "@/components/ui/InlineNumber";
 import Spinner from "@/components/ui/Spinner";
 import { useApi } from "@/hooks/useApi";
@@ -13,7 +14,6 @@ import {
   updateInventory,
   updateRoomRate,
 } from "@/lib/api/accommodation";
-import { formatInr } from "@/lib/format";
 import type { AccommodationSummary, Gender, RoomAvailability } from "@/types";
 
 const TIER_LABEL: Record<string, string> = {
@@ -128,7 +128,7 @@ export default function AccommodationView() {
           <span key={row.status} className="inline-flex items-center gap-1.5">
             <span aria-hidden>·</span>
             <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>{row.status}</Badge>
-            {row.count}, {formatInr(row.amount)}
+            {row.count}
           </span>
         ))}
         <span aria-hidden>·</span>
@@ -276,7 +276,7 @@ export default function AccommodationView() {
         ) : null}
       </Card>
 
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="secondary"
           size="sm"
@@ -285,6 +285,7 @@ export default function AccommodationView() {
         >
           Refresh
         </Button>
+        <SyncButton onDone={summary.refetch} />
       </div>
     </div>
   );

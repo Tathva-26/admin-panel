@@ -390,8 +390,8 @@ export interface AccommodationSummary {
   rooms: RoomRate[];
   availability: RoomAvailability[];
   bookingCount: number;
-  /** Bookings and paise (before TIQR's fee) per status. */
-  bookings: { status: string; count: number; amount: number }[];
+  /** Booking counts per status. Money is deliberately not sent to admins. */
+  bookings: { status: string; count: number }[];
   /**
    * Keyed `tier|gender`, then night: units paid for (CONFIRMED) and units held
    * by carts still at the payment page (PENDING).
@@ -403,7 +403,6 @@ export interface AccommodationBooking {
   bookingUid: string;
   userId: string;
   status: string;
-  amount: number;
   createdAt: string;
   user: { id: string; name: string; email: string; phone: string | null } | null;
   rooms: {
@@ -425,17 +424,27 @@ export interface FoodSummary {
   rates: FoodRate[];
   /** What catering has to cook, per day and diet, from live orders only. */
   kitchen: { day: number; diet: Diet; quantity: number }[];
-  /** Order count and paise (before TIQR's fee), per status. */
-  orders: { status: string; count: number; amount: number }[];
+  /** Order counts per status. Money is deliberately not sent to admins. */
+  orders: { status: string; count: number }[];
 }
 
 export interface FoodOrder {
   bookingUid: string;
   userId: string;
   status: string;
-  /** Paise, before TIQR's platform fee. */
-  amount: number;
   createdAt: string;
   user: { id: string; name: string; email: string; phone: string | null } | null;
   items: { id: number; day: number; diet: Diet; quantity: number }[];
+}
+
+/** What one manual sync with TIQR moved, per ledger. */
+export interface ReconcileLedgerResult {
+  checked: number;
+  moved: Record<string, number>;
+  failed: number;
+}
+
+export interface ReconcileResult {
+  accommodation: ReconcileLedgerResult;
+  food: ReconcileLedgerResult;
 }

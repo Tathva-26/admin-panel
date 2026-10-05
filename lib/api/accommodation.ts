@@ -1,11 +1,12 @@
 import type {
   AccommodationBooking,
   AccommodationSummary,
+  ReconcileResult,
   RoomInventory,
   RoomRate,
 } from "@/types";
 
-import { get, getObject, patch } from "./client";
+import { get, getObject, patch, post } from "./client";
 
 const BASE = "/admin/accommodation";
 
@@ -36,3 +37,10 @@ export const updateInventory = (id: number, total: number) =>
  */
 export const updateRoomRate = (id: number, price: number) =>
   patch<RoomRate>(`${BASE}/rooms/${id}`, { price }, "rate");
+
+/**
+ * Settle open room bookings AND food orders against TIQR now, the same pass
+ * the backend runs every 5 minutes. 409 while one is already running.
+ */
+export const syncWithTiqr = () =>
+  post<ReconcileResult>("/admin/accommodation/reconcile", undefined, "result");
