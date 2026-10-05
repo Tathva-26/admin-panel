@@ -44,6 +44,11 @@ export const NAV_ITEMS: NavItem[] = [
     description: "Hostel stock, pricing and per-night availability.",
   },
   {
+    href: "/food",
+    label: "Food",
+    description: "Food coupons, kitchen totals and orders.",
+  },
+  {
     href: "/bookings",
     label: "Bookings",
     description: "Event and accommodation bookings, and their payment state.",

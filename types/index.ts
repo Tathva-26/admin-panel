@@ -388,11 +388,8 @@ export interface RoomAvailability {
 export interface AccommodationSummary {
   inventory: RoomInventory[];
   rooms: RoomRate[];
-  food: FoodRate[];
   availability: RoomAvailability[];
   bookingCount: number;
-  /** What catering has to cook, per day and diet. */
-  kitchen: { day: number; diet: Diet; quantity: number }[];
 }
 
 export interface AccommodationBooking {
@@ -410,5 +407,28 @@ export interface AccommodationBooking {
     nights: number;
     quantity: number;
   }[];
-  food: { id: number; day: number; diet: Diet; quantity: number }[];
+}
+
+/* ---- food --------------------------------------------------------------- */
+
+/** Food coupons are their own TIQR event, checked out separately from rooms. */
+export interface FoodSummary {
+  /** TIQR food event id; null until provisioned. */
+  eventId: number | null;
+  rates: FoodRate[];
+  /** What catering has to cook, per day and diet, from live orders only. */
+  kitchen: { day: number; diet: Diet; quantity: number }[];
+  /** Order count and paise (before TIQR's fee), per status. */
+  orders: { status: string; count: number; amount: number }[];
+}
+
+export interface FoodOrder {
+  bookingUid: string;
+  userId: string;
+  status: string;
+  /** Paise, before TIQR's platform fee. */
+  amount: number;
+  createdAt: string;
+  user: { id: string; name: string; email: string; phone: string | null } | null;
+  items: { id: number; day: number; diet: Diet; quantity: number }[];
 }

@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
-
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/ui/ErrorState";
-import { Input } from "@/components/ui/Input";
+import InlineNumber from "@/components/ui/InlineNumber";
 import Spinner from "@/components/ui/Spinner";
 import { useApi } from "@/hooks/useApi";
 import { useMutation } from "@/hooks/useMutation";
 import {
   getAccommodation,
-  updateFoodRate,
   updateInventory,
   updateRoomRate,
 } from "@/lib/api/accommodation";
-import type { Diet, Gender, RoomAvailability } from "@/types";
+import type { Gender, RoomAvailability } from "@/types";
 
 const TIER_LABEL: Record<string, string> = {
   dormitory: "Dormitory",
@@ -26,46 +23,12 @@ const TIER_LABEL: Record<string, string> = {
 
 const tierName = (tier: string) => TIER_LABEL[tier] ?? tier;
 const genderName = (gender: Gender) => (gender === "MALE" ? "Male" : "Female");
-const dietName = (diet: Diet) => (diet === "VEG" ? "Veg" : "Non-Veg");
 
 /** Rupee input → paise, or null when it isn't a usable number. */
 function toPaise(value: string): number | null {
   const rupees = Number(value);
   if (!Number.isFinite(rupees) || rupees < 0) return null;
   return Math.round(rupees * 100);
-}
-
-/**
- * An editable number that only submits on an actual change, so tabbing
- * through the table does not fire a write per cell.
- */
-function InlineNumber({
-  initial,
-  suffix,
-  disabled,
-  onCommit,
-}: {
-  initial: string;
-  suffix?: string;
-  disabled?: boolean;
-  onCommit: (value: string) => void;
-}) {
-  const [value, setValue] = useState(initial);
-
-  return (
-    <span className="inline-flex items-center gap-1">
-      <Input
-        value={value}
-        disabled={disabled}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
-        onBlur={() => {
-          if (value !== initial) onCommit(value);
-        }}
-        className="h-8 w-24 text-right"
-      />
-      {suffix ? <span className="text-xs text-muted-foreground">{suffix}</span> : null}
-    </span>
-  );
 }
 
 /**
@@ -108,10 +71,8 @@ export default function AccommodationView() {
 
   const inventoryMutation = useMutation(updateInventory);
   const roomMutation = useMutation(updateRoomRate);
-  const foodMutation = useMutation(updateFoodRate);
 
-  const busy =
-    inventoryMutation.loading || roomMutation.loading || foodMutation.loading;
+  const busy = inventoryMutation.loading || roomMutation.loading;
 
   if (summary.loading && !summary.data) return <Spinner className="h-6 w-6" />;
   if (summary.error) {
@@ -119,14 +80,11 @@ export default function AccommodationView() {
   }
   if (!summary.data) return null;
 
-  const { inventory, rooms, food, availability, bookingCount, kitchen } =
-    summary.data;
+  const { inventory, rooms, availability, bookingCount } = summary.data;
 
   // A SKU with no TIQR ticket cannot be sold, whatever the price says, so it
   // is called out rather than left looking live.
-  const unprovisioned =
-    rooms.filter((row) => !row.tiqrTicketId).length +
-    food.filter((row) => !row.tiqrTicketId).length;
+  const unprovisioned = rooms.filter((row) => !row.tiqrTicketId).length;
 
   const commit = async (run: Promise<unknown>) => {
     await run;
@@ -271,84 +229,6 @@ export default function AccommodationView() {
         {roomMutation.error ? (
           <p className="mt-3 text-xs text-red-400">
             {roomMutation.error.message}
-          </p>
-        ) : null}
-      </Card>
-
-      {/* Food */}
-      <Card>
-        <h2 className="mb-1 text-sm font-semibold">Food coupons</h2>
-        <p className="mb-4 text-xs text-muted-foreground">
-          One coupon covers breakfast and lunch for its day.
-        </p>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="pb-2 pr-4 font-medium">Day</th>
-                <th className="pb-2 pr-4 font-medium">Diet</th>
-                <th className="pb-2 pr-4 font-medium">Price (₹)</th>
-                <th className="pb-2 pr-4 font-medium">Sold</th>
-                <th className="pb-2 font-medium">TIQR</th>
-              </tr>
-            </thead>
-            <tbody>
-              {food.map((row) => {
-                const sold =
-                  kitchen.find(
-                    (item) => item.day === row.day && item.diet === row.diet,
-                  )?.quantity ?? 0;
-                return (
-                  <tr key={row.id} className="border-b border-border/50">
-                    <td className="py-2 pr-4">Day {row.day}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">
-                      {dietName(row.diet)}
-                    </td>
-                    <td className="py-2 pr-4">
-                      <InlineNumber
-                        initial={String(row.price / 100)}
-                        disabled={busy}
-                        onCommit={(value) => {
-                          const paise = toPaise(value);
-                          if (paise === null || paise === row.price) return;
-                          void commit(foodMutation.run(row.id, paise));
-                        }}
-                      />
-                    </td>
-                    <td className="py-2 pr-4 tabular-nums">{sold}</td>
-                    <td className="py-2">
-                      {row.tiqrTicketId ? (
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          #{row.tiqrTicketId}
-                        </span>
-                      ) : (
-                        <Badge tone="amber">Not on sale</Badge>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* What catering has to cook. */}
-        <p className="mt-4 text-xs text-muted-foreground">
-          Kitchen totals:{" "}
-          {kitchen.length === 0
-            ? "nothing booked yet"
-            : kitchen
-                .map(
-                  (row) =>
-                    `Day ${row.day} ${dietName(row.diet)} × ${row.quantity}`,
-                )
-                .join(" · ")}
-        </p>
-
-        {foodMutation.error ? (
-          <p className="mt-3 text-xs text-red-400">
-            {foodMutation.error.message}
           </p>
         ) : null}
       </Card>
