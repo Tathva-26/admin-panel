@@ -1,7 +1,6 @@
 import type {
   AccommodationBooking,
   AccommodationSummary,
-  FoodRate,
   RoomInventory,
   RoomRate,
 } from "@/types";
@@ -37,6 +36,3 @@ export const updateInventory = (id: number, total: number) =>
  */
 export const updateRoomRate = (id: number, price: number) =>
   patch<RoomRate>(`${BASE}/rooms/${id}`, { price }, "rate");
-
-export const updateFoodRate = (id: number, price: number) =>
-  patch<FoodRate>(`${BASE}/food/${id}`, { price }, "rate");
