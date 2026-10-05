@@ -42,5 +42,8 @@ export const updateRoomRate = (id: number, price: number) =>
  * Settle open room bookings AND food orders against TIQR now, the same pass
  * the backend runs every 5 minutes. 409 while one is already running.
  */
+export const setBookingsOpen = (bookingsOpen: boolean) =>
+  patch<{ bookingsOpen: boolean }>(`${BASE}/settings`, { bookingsOpen });
+
 export const syncWithTiqr = () =>
   post<ReconcileResult>("/admin/accommodation/reconcile", undefined, "result");

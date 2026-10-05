@@ -4,6 +4,7 @@ import Badge, { type BadgeTone } from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import ErrorState from "@/components/ui/ErrorState";
+import BookingsSwitch from "@/components/accommodation/BookingsSwitch";
 import SyncButton from "@/components/accommodation/SyncButton";
 import InlineNumber from "@/components/ui/InlineNumber";
 import Spinner from "@/components/ui/Spinner";
@@ -113,7 +114,9 @@ export default function AccommodationView() {
 
   // A SKU with no TIQR ticket cannot be sold, whatever the price says, so it
   // is called out rather than left looking live.
-  const unprovisioned = rooms.filter((row) => !row.tiqrTicketId).length;
+  const unprovisioned = rooms.filter(
+    (row) => !(row.onSale ?? row.tiqrTicketId),
+  ).length;
 
   const commit = async (run: Promise<unknown>) => {
     await run;
@@ -133,6 +136,11 @@ export default function AccommodationView() {
         </Button>
         <SyncButton onDone={summary.refetch} />
       </div>
+
+      <BookingsSwitch
+        open={summary.data.bookingsOpen ?? true}
+        onChanged={summary.refetch}
+      />
 
       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
         <span>{bookingCount} booking(s)</span>
@@ -156,7 +164,7 @@ export default function AccommodationView() {
             {unprovisioned === 1 ? "s" : "ve"} no TIQR ticket yet, so they
             cannot be sold. Run{" "}
             <code className="rounded bg-black/30 px-1">
-              provision-accommodation.js --provision
+              provision-stay-events.js --provision
             </code>{" "}
             on the backend.
           </p>
@@ -267,9 +275,11 @@ export default function AccommodationView() {
                     />
                   </td>
                   <td className="py-2">
-                    {row.tiqrTicketId ? (
+                    {row.onSale ?? row.tiqrTicketId ? (
                       <span className="text-xs tabular-nums text-muted-foreground">
-                        #{row.tiqrTicketId}
+                        {row.stayTickets
+                          ? `${row.stayTickets} date${row.stayTickets === 1 ? "" : "s"}`
+                          : `#${row.tiqrTicketId}`}
                       </span>
                     ) : (
                       <Badge tone="amber">Not on sale</Badge>
