@@ -199,10 +199,15 @@ export async function getObject<T>(path: string, params?: QueryParams): Promise<
 /**
  * The instance defaults to JSON, and with that header axios flattens a
  * `FormData` body and drops any file in it — so multipart must say so.
+ *
+ * Multipart also gets a longer timeout. An image is uploaded, resized and
+ * pushed to R2 before the backend answers, and a poster over a slow link took
+ * ~19s: past the 15s default, so the admin saw "timed out" for an event that
+ * was in fact created, and retrying made duplicates.
  */
 const multipartConfig = (body: unknown) =>
   body instanceof FormData
-    ? { headers: { "Content-Type": "multipart/form-data" } }
+    ? { headers: { "Content-Type": "multipart/form-data" }, timeout: 120_000 }
     : undefined;
 
 export async function post<T>(
