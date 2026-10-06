@@ -30,7 +30,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   CONFIRMED: "green",
   PENDING: "amber",
   FAILED: "red",
+  OVERBOOKED: "red",
 };
+
+/** Fest night N as a date: night 1 is 9 Oct. */
+const nightDate = (night: number) => `${8 + night} Oct`;
 
 /** Rupee input → paise, or null when it isn't a usable number. */
 function toPaise(value: string): number | null {
@@ -63,11 +67,14 @@ function NightCells({
         const free = row.byNight[night];
         const paid = taken?.[night]?.CONFIRMED ?? 0;
         const held = taken?.[night]?.PENDING ?? 0;
+        const over = taken?.[night]?.OVERBOOKED ?? 0;
         const soldOut = free <= 0;
         return (
           <span
             key={night}
-            title={`Night ${night}: ${paid} paid, ${held} held, ${free} free of ${row.total}`}
+            title={`Night ${night}: ${paid} paid, ${held} held, ${free} free of ${row.total}${
+              over ? `, ${over} overbooked (paid on TIQR, no bed)` : ""
+            }`}
             className={[
               "inline-flex min-w-[4.5rem] flex-col items-center rounded border px-1.5 py-1 text-xs tabular-nums",
               soldOut
@@ -80,6 +87,11 @@ function NightCells({
               <span className="text-success">{paid} paid</span>
               {held ? <span className="text-warning"> · {held} held</span> : null}
             </span>
+            {over ? (
+              <span className="text-[10px] font-medium leading-tight text-red-400">
+                +{over} overbooked
+              </span>
+            ) : null}
           </span>
         );
       })}
@@ -110,6 +122,7 @@ export default function AccommodationView() {
     bookingCount,
     bookings = [],
     occupancy = {},
+    overbooked = [],
   } = summary.data;
 
   // A SKU with no TIQR ticket cannot be sold, whatever the price says, so it
@@ -156,6 +169,45 @@ export default function AccommodationView() {
         <span aria-hidden>·</span>
         <span>Guests bring their own bedsheets</span>
       </div>
+
+      {overbooked.length > 0 ? (
+        <Card className="border-red-500/40 bg-red-500/5">
+          <h2 className="text-sm font-semibold text-red-400">
+            {overbooked.length} overbooked booking
+            {overbooked.length === 1 ? "" : "s"}
+          </h2>
+          <p className="mb-3 mt-1 text-xs text-muted-foreground">
+            TIQR took the payment but refused the ticket, so these guests have
+            paid and hold no bed. They are not counted in the stock below. Each
+            one needs honouring (give them a bed) or refunding from the TIQR
+            dashboard.
+          </p>
+          <ul className="space-y-2 text-sm">
+            {overbooked.map((row) => (
+              <li
+                key={row.bookingUid}
+                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
+              >
+                <span className="font-medium">{row.user?.name ?? "—"}</span>
+                <span className="text-xs text-muted-foreground">
+                  {[row.user?.email, row.user?.phone].filter(Boolean).join(" · ")}
+                </span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {row.tiqrBookingId ?? row.bookingUid}
+                </span>
+                <span className="text-xs">
+                  {row.rooms
+                    .map(
+                      (room) =>
+                        `${tierName(room.tier)} · ${genderName(room.gender)} · ${room.quantity} · ${nightDate(room.checkInDay)}, ${room.nights} night${room.nights === 1 ? "" : "s"}`,
+                    )
+                    .join("; ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
 
       {unprovisioned > 0 ? (
         <Card className="border-amber-500/40 bg-amber-500/5">

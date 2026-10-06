@@ -403,7 +403,30 @@ export interface AccommodationSummary {
    * Keyed `tier|gender`, then night: units paid for (CONFIRMED) and units held
    * by carts still at the payment page (PENDING).
    */
-  occupancy: Record<string, Record<string, { CONFIRMED: number; PENDING: number }>>;
+  occupancy: Record<
+    string,
+    Record<string, { CONFIRMED: number; PENDING: number; OVERBOOKED?: number }>
+  >;
+  /**
+   * Bookings TIQR marked "overbooked": paid, but TIQR refused the ticket, so
+   * the guest holds no bed. Each needs honouring or refunding by hand.
+   */
+  overbooked?: OverbookedBooking[];
+}
+
+export interface OverbookedBooking {
+  bookingUid: string;
+  /** TIQR's display id (TQ-...); null if TIQR could not be reached. */
+  tiqrBookingId: string | null;
+  createdAt: string;
+  user: { name: string; email: string; phone: string | null } | null;
+  rooms: {
+    tier: string;
+    gender: Gender;
+    checkInDay: number;
+    nights: number;
+    quantity: number;
+  }[];
 }
 
 export interface AccommodationBooking {
